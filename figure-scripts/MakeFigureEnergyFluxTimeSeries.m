@@ -1,4 +1,4 @@
-wvd = WVDiagnostics("data/bottom-generated-tide-forced-const-N-5cms.nc");
+wvd = WVDiagnostics("../data/bottom-generated-tide-forced-const-N-5cms.nc");
 
 %% Read in the time series and define the phases
 [E_g,KE_g,PE_g,E_mda] = wvd.diagfile.readVariables('E_g','KE_g','PE_g','E_mda');
@@ -56,7 +56,7 @@ inertial_flux(iFlux).pe_g = d1.te_gmda + d2.pe_g;
 % flux_filter = @(v) movmean(v,21);
 flux_filter = @(v) vfilt(v,21);
 
-figure
+figure(PaperPosition=[1 1 300 800]);
 tl = tiledlayout(3,1,TileSpacing="compact");
 nexttile(tl);
 plot(t_diff/86400,flux_filter(dE_g)/wvd.flux_scale,LineWidth=4,Color=0.3*[1 1 1]), hold on
@@ -106,3 +106,5 @@ for i=1:3
     end
     text(375,0.8,['(' char(real('a')+i-1) ')'])
 end
+
+exportgraphics(tl,"FluxTimeSeries.png",Resolution=300)
