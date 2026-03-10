@@ -1,0 +1,113 @@
+%MakeEnergySpectra
+
+options.iTime = {1 4*t_phaseII+1 4*t_phaseIII+1 4*400+1};
+%options.iTime = {1 4*100+1 4*200+1 4*300+1 4*400+1};
+N = length(options.iTime);
+energy_limits = [-8 -0.001];
+v = [1 2 3 4]; %levels for frequency contours
+
+wvd.iTime = options.iTime{1};
+
+%create radial wavelength vectors
+radialWavelength = 2*pi./wvd.wvt.kRadial/1000;
+radialWavelength(1) = 2*radialWavelength(2); %What is this? 
+
+jWavelength = 2*pi./wvd.jWavenumber/1000;
+
+% location for x-z section
+iY = round(wvd.wvt.Nx/2);
+
+% create the lines of constant frequency
+[omegaN,n] = wvd.wvt.transformToRadialWavenumber(abs(wvd.wvt.Omega),...
+    ones(size(wvd.wvt.Omega)));
+%omegaJK = (omegaN./n) ./ (2*pi/(24*3600));
+omegaJK = (omegaN./n) ./ (2*pi/(12.420602*3600));
+
+%cyclic frequency for diurnal cycle = 2*pi/(24*3600)
+%cyclic frequency for M2 = 2*pi/(12.420602*3600)
+
+% create the lines of constant deformation radius
+deformationJK = repmat(sqrt(wvd.wvt.Lr2)./1000,1,length(wvd.wvt.kRadial));
+
+figure
+
+tl = tiledlayout(2,N,TileSpacing="tight");
+
+for n = 1:N
+
+    wvd.iTime = options.iTime{n};
+    
+    %compute some quantities
+    TE_A0_j_kl = wvd.wvt.A0_TE_factor .* abs(wvd.wvt.A0).^2; % m^2/s^3
+    TE_A0_j_kR = wvd.wvt.transformToRadialWavenumber(TE_A0_j_kl);
+    TE_Apm_j_kl = wvd.wvt.Apm_TE_factor .* (abs(wvd.wvt.Ap).^2 + abs(wvd.wvt.Am).^2); % m^2/s^3
+    TE_Apm_j_kR = wvd.wvt.transformToRadialWavenumber(TE_Apm_j_kl);
+
+    %wave energy spectrum
+    nexttile(tl,n);
+    val = log10(TE_Apm_j_kR);
+    val(val==-inf) = energy_limits(1);
+
+    jpcolor(flipud(radialWavelength),wvd.wvt.j,fliplr(val)), xlog, flipx, hold on
+    xlim([min(radialWavelength) max(radialWavelength)]), ylim([-0.5 18.5]), yticks(0:2:18), clim(energy_limits)
+   
+    contour(radialWavelength,wvd.wvt.j',omegaJK,[v(1) v(1)],'k','LineWidth',0.5)
+    contour(radialWavelength,wvd.wvt.j',omegaJK,v(2:end),'LineWidth',0.5,...
+        'Color',0.6*[1 1 1])
+
+    if n == 1
+        ylabel('Vertical mode')
+        text(800,17,'Wave Spectra','color',0.7*[1 1 1])
+    else
+        set(gca,'YTickLabels',[])
+    end
+
+    if n == N
+        cb = colorbar;
+        cb.Label.String = 'Log_{10} Energy Density (m^3 s^{-2})';
+    end
+    %text(10^2.95,17.25,['(' char(real('a')+(n-1)) ')'])
+    axis square
+    noxlabels
+    colormap(sequentialcolormap)
+    title(['T = ' num2str(round(t(options.iTime{n}))) ' days'])
+    %geostrophic energy spectrum
+    nexttile(tl,n+N);
+    val = log10(TE_A0_j_kR);
+    val(val==-inf) = energy_limits(1); 
+
+    jpcolor(flipud(radialWavelength),wvd.wvt.j,fliplr(val)), xlog, flipx
+    xlim([min(radialWavelength) max(radialWavelength)]), ylim([-0.5 18.5])
+    yticks(0:2:18),xticks([10^1 10^2 10^3])
+    clim(energy_limits)
+    
+    if n == 1
+        ylabel('Vertical mode number')
+        text(800,17,'Geostrophic Spectra','color',0.7*[1 1 1])
+    else
+        set(gca,'YTickLabels',[])
+    end
+
+    if n == N
+        yticksTemp = yticks;
+        ticks_y = sqrt(wvd.wvt.Lr2)./1000;
+        labels_y = cell(length(yticksTemp),1);
+        for i=1:length(yticksTemp)
+            labels_y{i} = sprintf('%0.1f',ticks_y(yticksTemp(i)+1));
+        end
+        text(0.6*min(xlim)*ones(size(yticksTemp)),yticksTemp,labels_y,...
+            'Color',0.5*[1 1 1],'HorizontalAlignment','center')
+        %text(0.5*min(xlim),1.05*max(ylim),'$L_r$ (km)',...
+        %    'Color',0.5*[1 1 1],'HorizontalAlignment','center')
+        text(0.3*min(xlim),0.5*max(ylim),'$L_r$ (km)','Color',0.5*[1 1 1],...
+            'HorizontalAlignment', 'center', 'Rotation', 90);
+    end
+    %text(10^2.95,17.25,['(' setstr(real('a')+5+(n-1)) ')'])
+    axis square, xlabel('Wavelength (km)')
+    colormap(sequentialcolormap)
+end
+
+%set(gcf,'paperposition',[1 1 10 3.9])
+set(gcf,'paperposition',[1 1 10 4.72])
+jprint(printdir,'EnergySpectra','-r500')
+
