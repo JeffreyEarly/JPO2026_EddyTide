@@ -1,5 +1,11 @@
 %MakeEnergySpectra
 
+loadFigureDefaults;
+[t_phaseII, t_phaseIII] = computePhaseBoundaries(wvd);
+
+t_phaseII = t_phaseII/86400;
+t_phaseIII = t_phaseIII/86400;
+
 options.iTime = {1 4*t_phaseII+1 4*t_phaseIII+1 4*400+1};
 %options.iTime = {1 4*100+1 4*200+1 4*300+1 4*400+1};
 N = length(options.iTime);
@@ -29,7 +35,7 @@ omegaJK = (omegaN./n) ./ (2*pi/(12.420602*3600));
 % create the lines of constant deformation radius
 deformationJK = repmat(sqrt(wvd.wvt.Lr2)./1000,1,length(wvd.wvt.kRadial));
 
-figure
+figure(WindowStyle="normal")
 
 tl = tiledlayout(2,N,TileSpacing="tight");
 
@@ -107,7 +113,6 @@ for n = 1:N
     colormap(sequentialcolormap)
 end
 
-%set(gcf,'paperposition',[1 1 10 3.9])
-set(gcf,'paperposition',[1 1 10 4.72])
-jprint(printdir,'EnergySpectra','-r500')
-
+set(gcf,'Units','inches')
+set(gcf,'Position',[1 1 10 4.72])
+exportgraphics(gcf,figureFolder + "/" + "Figure6_EnergySpectra.png",Resolution=500)

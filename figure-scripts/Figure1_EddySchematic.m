@@ -1,5 +1,7 @@
 %MakeEddySchematic
 
+loadFigureDefaults;
+
 eddyProperties.Ue = -15/100; 
 eddyProperties.He = 0.424 * 1000;
 eddyProperties.Le = 56.57 * 1000;
@@ -73,7 +75,7 @@ hl= legend('$\tilde{\rho}_b$',...
 
 fontsize 12 12 12 12
 set(gcf,'paperposition',[1 1 5 5])
-jprint(printdir,'EddyBackgroundError','-r500')
+% jprint(printdir,'EddyBackgroundError','-r500')
 %--------------------------------------------------------------------------
 rhobbar =  sum(rhobbar(:,2:3),2);
 rhobbar = interp1(z,rhobbar,wvt.z);
@@ -89,7 +91,10 @@ rho = rhonm + rhofun(xg,0,zg) + rhobbar';
 zeta = zetafun(abs(xg),zg);
 
 %One column version 
-figure
+% fig = figure(Units='points',Position=[1 1 FigureWidth1Col 3*72]);
+% set(gcf,'PaperPositionMode','auto')
+
+figure(WindowStyle="normal")
 contourf(x/1000,z/1000,rho',100),nocontours,hold on
 contour(x/1000,z/1000,rho',(1020:0.2:1029),'color',[1 1 1]*0.6)
 colormap(gca,sequentialcolormap)
@@ -133,9 +138,9 @@ set(hc1,'Ticks',(1025:1029))
 set(gca,'position',[axpos(1) axpos(2)+0.15 axpos(3) axpos(4)-0.17])
 %text(-360,-.08,'(a)')
 
-
-set(gcf,'paperposition',[1 1 5 5])
-jprint(printdir,'EddySchematic','-r500')
+set(gcf,'Units','inches')
+set(gcf,'Position',[1 1 5 5])
+exportgraphics(gcf,figureFolder + "/" + "Figure1_EddySchematic.png",Resolution=500)
 
 %%two column version
 % figure

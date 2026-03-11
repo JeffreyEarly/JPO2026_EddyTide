@@ -1,4 +1,6 @@
-wvd = WVDiagnostics("../data/bottom-generated-tide-forced-const-N-5cms.nc");
+loadFigureDefaults;
+
+[t_phaseII, t_phaseIII] = computePhaseBoundaries(wvd);
 
 %% Read in the time series and define the phases
 [E_g,KE_g,PE_g,E_mda] = wvd.diagfile.readVariables('E_g','KE_g','PE_g','E_mda');
@@ -12,10 +14,6 @@ t_diff = t(2:end) - (t(2)-t(1))/2;
 dE_g = diff(E_g)./diff(t);
 dKE_g = diff(KE_g)./diff(t);
 dPE_g = diff(PE_g)./diff(t);
-
-[maxflux,imaxflux] = max(abs(dPE_g));
-t_phaseII = t_diff(find(dPE_g<-0.1*maxflux,1,'first'));
-t_phaseIII = t_diff(find(dPE_g>-0.1*maxflux & t_diff>t_diff(imaxflux),1,'first'));
 
 %% Read in the geostrophic inertial fluxes and create TE/KE/PE time series
 [geo_hke_jk, geo_pe_jk] = wvd.diagfile.readVariables("geo_hke_jk","geo_pe_jk");
@@ -107,4 +105,4 @@ for i=1:3
     text(375,0.8,['(' char(real('a')+i-1) ')'])
 end
 
-exportgraphics(tl,"FluxTimeSeries.png",Resolution=300)
+exportgraphics(tl,figureFolder + "/" + "Figure7_FluxTimeSeries.png",Resolution=300)

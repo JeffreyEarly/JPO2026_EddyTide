@@ -1,5 +1,9 @@
 %MakeEnergyTimeSeries
 
+loadFigureDefaults;
+
+[t_phaseII, t_phaseIII] = computePhaseBoundaries(wvd);
+
 % Total energy and enstrophy over time
 
 [E_g,KE_g,PE_g,E_mda,E_w,E_io,ke,pe_quad,ape] = diagfile.readVariables('E_g','KE_g','PE_g','E_mda','E_w','E_io','ke','pe_quadratic','ape');
@@ -16,7 +20,7 @@ shear_g = squeeze(mean(shsg,[1 2]));
 shear_w = squeeze(mean(shsw+svsw,[1 2]));
 shear_t = shear_g + shear_w;
 
-figure
+figure(WindowStyle="normal")
 subplot(3,1,1)
 plot(t,[totalEnergy E_w E_g KE_g PE_g]./totalEnergy(1));
 hleg=legend('Total Energy $\mathcal{E}$','Wave Energy $\mathcal{E}_w$',...
@@ -50,8 +54,8 @@ axs = packfig(3,1,'rows');
 
 for i=1:3
     axes(axs(i)),xlim([0 400]),linestyle thick 
-    vlines(t_phaseII,'1D:')
-    vlines(t_phaseIII,'1D:')
+    vlines(t_phaseII/86400,'1D:')
+    vlines(t_phaseIII/86400,'1D:')
     if i==1
         text(80,1.05,'Phase I','color',0.7*[1 1 1])
         text(235,1.05,'Phase II','color',0.7*[1 1 1])
@@ -61,5 +65,6 @@ end
 
 fontsize 10.5 10.5 10.5 10.5
 
-set(gcf,'paperposition',[1 1 5 12])
-jprint(printdir,'EnergyTimeSeries','-r500')
+set(gcf,'Units','inches')
+set(gcf,'Position',[1 1 5 12])
+exportgraphics(gcf,figureFolder + "/" + "Figure4_EnergyTimeSeries.png",Resolution=500)

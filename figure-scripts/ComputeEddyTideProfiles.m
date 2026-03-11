@@ -1,14 +1,16 @@
 %ComputeEddyTideProfiles
-
+loadFigureDefaults;
+t = wvd.t_wv;
 [hkeg,hkew,vkew,shsg,shsw,svsw,Zg,Yg,peg,pew] = vzeros(wvt.Nz,wvt.Nx,length(t));
 
 try 
-    load EddyTideProfiles
+    EddyTideProfiles = load(datadir + "EddyTideProfiles.mat");
     use EddyTideProfiles
 catch
     for i=1:length(t)
         i
-        wvt.initFromNetCDFFile(ncfile,iTime=i)
+        % wvt.initFromNetCDFFile(ncfile,iTime=i)
+        wvd.iTime = iTime;
 
         ug = wvt.u_g + wvt.u_mda;
         vg = wvt.v_g + wvt.v_mda;
@@ -40,10 +42,10 @@ catch
         Yg(:,:,i) = squeeze(mean(wvt.apv.^2,1))';
     end
     clear EddyTideProfiles
-    matsave EddyTideProfiles hkeg hkew vkew peg pew shsg shsw svsw Yg Zg
+    save(datadir + "EddyTideProfiles.mat","hkeg","hkew","vkew","peg","pew","shsg","shsw","svsw","Yg","Zg");
 end
 
-
+return;
 
 %ComputeEddyTideProfiles
 

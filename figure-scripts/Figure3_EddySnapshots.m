@@ -1,19 +1,22 @@
 %MakeEddySnapshots
 
+loadFigureDefaults;
+
 x = (wvt.x-mean(wvt.x))/1e3;
 y = (wvt.y-mean(wvt.y))/1e3; 
 
 ci = (-50:50)./50*.15;
 
 Times = [1,401,801,1201,1601];
-figure
+figure(WindowStyle="normal")
 n=0;
 for j=1:3
     for i=1:5
         n=n+1;
         subplot(3,5,n)
         iTime = Times(i);
-        wvt.initFromNetCDFFile(ncfile,iTime=iTime)
+        wvd.iTime = iTime;
+        % wvt.initFromNetCDFFile(ncfile,iTime=iTime)
         switch j
             case 1 
                 zeta=wvt.zeta_z(:,:,end);
@@ -34,7 +37,7 @@ for j=1:3
             hc.Label.Interpreter = 'latex';
         end
         if j==2
-            text(50,300,['t = ' int2str(t(Times(i))) ' days']);
+            text(50,300,['t = ' int2str(wvd.t_wv(Times(i))/86400) ' days']);
         end
         colormap(divergingcolormap)
         xtick(-400:100:400),ytick(-400:100:400)
@@ -43,8 +46,10 @@ end
 packfig(3,5,'both')
 
 fontsize 10 10 10 10
-set(gcf,'paperposition',[1 1 12 6.8])
-jprint(printdir,'EddySnapShots','-r500')
+set(gcf,'Units','inches')
+set(gcf,'Position',[1 1 12 6.8])
+exportgraphics(gcf,figureFolder + "/" + "Figure3_EddySnapShots.png",Resolution=500)
+
 %--------------------------------------------------------------------------
 % %ci = (-50:50)./50*.15;
 % %Times = 1:14*4:407*4;

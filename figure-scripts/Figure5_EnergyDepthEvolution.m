@@ -1,5 +1,8 @@
 %MakeEnergyDepthEvolution
 
+loadFigureDefaults;
+[t_phaseII, t_phaseIII] = computePhaseBoundaries(wvd);
+
 load EddyTideProfiles
 use EddyTideProfiles
 
@@ -12,7 +15,7 @@ ci1 = logspace(-3,-1/2,6);
 ci2 = [0.5,0.6,0.7,0.8,0.9];
 hcs = zeros(5,1);
 
-figure
+figure(WindowStyle="normal")
 subplot(5,1,1),
 contourf(t,wvt.z/1000,squeeze(mean(hkeg+peg,2))./E0,100)
 nocontours,hold on,clim([0 maxmax(mean(hkeg+peg,2))./E0])
@@ -96,8 +99,9 @@ text(235,-1.5,'Phase II','color',0.7*[1 1 1])
 text(330,-1.5,'Phase III','color',0.7*[1 1 1])
 
 fontsize 10 10 10 10
-set(gcf,'paperposition',[1 1 5 12])
-jprint(printdir,'EnergyDepthEvolution','-r500')
+set(gcf,'Units','inches')
+set(gcf,'Position',[1 1 5 12])
+exportgraphics(gcf,figureFolder + "/" + "Figure5_EnergyDepthEvolution.png",Resolution=500)
 
 %keprof= squeeze(mean(hkeg,2));
 %plot(wvt.z/1000,keprof(:,end)-keprof(:,1))

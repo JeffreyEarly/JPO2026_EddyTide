@@ -1,11 +1,13 @@
 %MakeTidalForcingScatter
 
+loadFigureDefaults;
+
 % Compute the intrinsic frequency of the wave modes
 frequencies = wvt.transformToKLAxes(wvt.Omega);
 frequenciesKJ = squeeze(frequencies(:,wvt.lAxis==0,:));
 intrinsicFrequenciesKJ = frequenciesKJ - wvt.kAxis*abs(eddyProperties.Ue);
 
-figure
+figure(WindowStyle="normal")
 jpcolor(wvt.kAxis,wvt.j,intrinsicFrequenciesKJ.'/wvt.f), hold on
 contour(wvt.kAxis,wvt.j,intrinsicFrequenciesKJ.'/wvt.f,(0:.1:1),...
     'color',lowcontourcolor,'LineWidth',0.5);
@@ -47,5 +49,6 @@ set(gca,'position',[axpos(1) axpos(2)+0.15 axpos(3) axpos(4)-0.17])
 
 
 fontsize 10 10 10 10
-set(gcf,'paperposition',[1 1 5 5.5])
-jprint(printdir,'TidalForcingScatter','-r500')
+set(gcf,'Units','inches')
+set(gcf,'Position',[1 1 5 5.5])
+exportgraphics(gcf,figureFolder + "/" + "Figure2_TidalForcingScatter.png",Resolution=500)
