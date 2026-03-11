@@ -1,12 +1,14 @@
 % datadir should point to the folder where the model output file is, the
 % diagnostics file, and the EddyTideProfiles.mat
 datadir = "../data/";
+datadir = "/Users/jearly/Dropbox/Shared/Luna-Keshav-Jonathan/";
 wvtfilepath = datadir + "bottom-generated-tide-forced-const-N-5cms.nc";
 if ~(exist("wvd","var") && wvd.wvpath == wvtfilepath)
     wvd = WVDiagnostics(wvtfilepath);
     wvt = wvd.wvt;
 end
 
+% AMS figure widths, in points
 FigureWidth1Col = 19*12;
 FigureWidth23Page = 27*12;
 FigureWidth2Col = 33*12;

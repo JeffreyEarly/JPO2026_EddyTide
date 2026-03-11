@@ -3,10 +3,12 @@
 loadFigureDefaults;
 [t_phaseII, t_phaseIII] = computePhaseBoundaries(wvd);
 
+t = wvd.t_wv/86400;
 t_phaseII = t_phaseII/86400;
 t_phaseIII = t_phaseIII/86400;
 
-options.iTime = {1 4*t_phaseII+1 4*t_phaseIII+1 4*400+1};
+% options.iTime = {1 4*t_phaseII+1 4*t_phaseIII+1 4*400+1};
+options.iTime = {1 find(t<t_phaseII,1,"last") find(t<t_phaseIII,1,"last") 4*400+1};
 %options.iTime = {1 4*100+1 4*200+1 4*300+1 4*400+1};
 N = length(options.iTime);
 energy_limits = [-8 -0.001];

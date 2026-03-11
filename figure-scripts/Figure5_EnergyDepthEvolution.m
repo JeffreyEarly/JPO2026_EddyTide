@@ -3,8 +3,20 @@
 loadFigureDefaults;
 [t_phaseII, t_phaseIII] = computePhaseBoundaries(wvd);
 
-load EddyTideProfiles
-use EddyTideProfiles
+
+eddyProperties.Ue = -15/100; 
+eddyProperties.He = 0.424 * 1000;
+eddyProperties.Le = 56.57 * 1000;
+eddyProperties.Lxy = wvt.Lx;
+eddyProperties.Lz = wvt.Lz;
+eddyProperties.N2 = wvt.N2(1);
+eddyProperties.f =  wvt.f;
+eddyProperties.g = wvt.g;
+eddyProperties.rho0 =  wvt.rho0;
+use eddyProperties
+
+EddyTideProfiles = ComputeEddyTideProfiles(wvd);
+use EddyTideProfiles;
 
 E0 = mean(mean(hkeg(:,:,1)+peg(:,:,1),1),2);
 shsg0 = mean(mean(shsg(:,:,1),1),2);

@@ -54,7 +54,7 @@ inertial_flux(iFlux).pe_g = d1.te_gmda + d2.pe_g;
 % flux_filter = @(v) movmean(v,21);
 flux_filter = @(v) vfilt(v,21);
 
-figure(PaperPosition=[1 1 300 800]);
+fig = figure(WindowStyle="normal");
 tl = tiledlayout(3,1,TileSpacing="compact");
 nexttile(tl);
 plot(t_diff/86400,flux_filter(dE_g)/wvd.flux_scale,LineWidth=4,Color=0.3*[1 1 1]), hold on
@@ -105,4 +105,7 @@ for i=1:3
     text(375,0.8,['(' char(real('a')+i-1) ')'])
 end
 
+fontsize 10 10 10 10
+set(fig,'Units','inches')
+set(fig,'Position',[1 1 5 5])
 exportgraphics(tl,figureFolder + "/" + "Figure7_FluxTimeSeries.png",Resolution=300)
