@@ -73,7 +73,7 @@ hl= legend('$\tilde{\rho}_b$',...
 '$\left|{\varepsilon_b}^{\left\{2\right\}}\right|$',...
 'location','northwest','interpreter','latex');
 
-fontsize 12 12 12 12
+% fontsize 12 12 12 12
 set(gcf,'paperposition',[1 1 5 5])
 % jprint(printdir,'EddyBackgroundError','-r500')
 %--------------------------------------------------------------------------

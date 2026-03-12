@@ -48,7 +48,7 @@ set(hc,'position',[pos(1)+0.025 pos(2) pos(3)-0.05 pos(4)/2])
 set(gca,'position',[axpos(1) axpos(2)+0.15 axpos(3) axpos(4)-0.17])
 
 
-fontsize 10 10 10 10
+% fontsize 10 10 10 10
 set(gcf,'Units','inches')
 set(gcf,'Position',[1 1 5 5.5])
 exportgraphics(gcf,figureFolder + "/" + "Figure2_TidalForcingScatter.png",Resolution=500)

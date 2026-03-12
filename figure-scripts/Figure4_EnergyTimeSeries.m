@@ -6,16 +6,16 @@ loadFigureDefaults;
 
 % Total energy and enstrophy over time
 
-[E_g,KE_g,PE_g,E_mda,E_w,E_io,ke,pe_quad,ape] = diagfile.readVariables('E_g','KE_g','PE_g','E_mda','E_w','E_io','ke','pe_quadratic','ape');
-[Z_quad,Z_apv] = diagfile.readVariables('enstrophy_quadratic','enstrophy_apv');
+[E_g,KE_g,PE_g,E_mda,E_w,E_io,ke,pe_quad,ape] = wvd.diagfile.readVariables('E_g','KE_g','PE_g','E_mda','E_w','E_io','ke','pe_quadratic','ape');
+[Z_quad,Z_apv] = wvd.diagfile.readVariables('enstrophy_quadratic','enstrophy_apv');
 
 totalEnergy = ke + pe_quad;
 totalEnergy_ape = ke + ape;
 
 clear ugz vgz wgz 
 
-load EddyTideProfiles
-use EddyTideProfiles
+EddyTideProfiles = ComputeEddyTideProfiles(wvd);
+use EddyTideProfiles;
 shear_g = squeeze(mean(shsg,[1 2]));
 shear_w = squeeze(mean(shsw+svsw,[1 2]));
 shear_t = shear_g + shear_w;
@@ -54,8 +54,8 @@ axs = packfig(3,1,'rows');
 
 for i=1:3
     axes(axs(i)),xlim([0 400]),linestyle thick 
-    vlines(t_phaseII/86400,'1D:')
-    vlines(t_phaseIII/86400,'1D:')
+    h = vlines(t_phaseII/86400,'1D:'); h.Annotation.LegendInformation.IconDisplayStyle = 'off';
+    h = vlines(t_phaseIII/86400,'1D:'); h.Annotation.LegendInformation.IconDisplayStyle = 'off';
     if i==1
         text(80,1.05,'Phase I','color',0.7*[1 1 1])
         text(235,1.05,'Phase II','color',0.7*[1 1 1])
@@ -63,8 +63,8 @@ for i=1:3
     end
 end
 
-fontsize 10.5 10.5 10.5 10.5
+% fontsize 10.5 10.5 10.5 10.5
 
 set(gcf,'Units','inches')
-set(gcf,'Position',[1 1 5 12])
+set(gcf,'Position',[1 1 5 10])
 exportgraphics(gcf,figureFolder + "/" + "Figure4_EnergyTimeSeries.png",Resolution=500)

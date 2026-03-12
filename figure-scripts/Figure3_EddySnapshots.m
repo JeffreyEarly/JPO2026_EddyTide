@@ -45,7 +45,7 @@ for j=1:3
 end
 packfig(3,5,'both')
 
-fontsize 10 10 10 10
+% fontsize 10 10 10 10
 set(gcf,'Units','inches')
 set(gcf,'Position',[1 1 12 6.8])
 exportgraphics(gcf,figureFolder + "/" + "Figure3_EddySnapShots.png",Resolution=500)

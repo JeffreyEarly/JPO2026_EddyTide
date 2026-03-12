@@ -105,7 +105,7 @@ for i=1:3
     text(375,0.8,['(' char(real('a')+i-1) ')'])
 end
 
-fontsize 10 10 10 10
+% fontsize 10 10 10 10
 set(fig,'Units','inches')
 set(fig,'Position',[1 1 5 5])
 exportgraphics(tl,figureFolder + "/" + "Figure7_FluxTimeSeries.png",Resolution=300)

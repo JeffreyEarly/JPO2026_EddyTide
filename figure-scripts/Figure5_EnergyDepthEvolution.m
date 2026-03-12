@@ -2,7 +2,7 @@
 
 loadFigureDefaults;
 [t_phaseII, t_phaseIII] = computePhaseBoundaries(wvd);
-
+t = wvd.t_wv/86400;
 
 eddyProperties.Ue = -15/100; 
 eddyProperties.He = 0.424 * 1000;
@@ -97,8 +97,8 @@ for i=1:length(ax)
     set(hcs(i),'position',[pos(1:2) pos(3)/2 pos(4)])
     xlim([0 400]),ylim([-2 0]),yticks([-2:.5:0]),
     ylabel('Depth (km)'),
-    vlines(t_phaseII,'1D:')
-    vlines(t_phaseIII,'1D:')
+    vlines(t_phaseII/86400,'1D:')
+    vlines(t_phaseIII/86400,'1D:')
     text(5,-1.85,['(' char(real('a')+i-1) ')'],'color',0.7*[1 1 1])
     colormap(sequentialcolormap)
     hlines(-He/1000,'2w')
@@ -110,7 +110,7 @@ text(80,-1.5,'Phase I','color',0.7*[1 1 1])
 text(235,-1.5,'Phase II','color',0.7*[1 1 1])
 text(330,-1.5,'Phase III','color',0.7*[1 1 1])
 
-fontsize 10 10 10 10
+% fontsize 10 10 10 10
 set(gcf,'Units','inches')
 set(gcf,'Position',[1 1 5 12])
 exportgraphics(gcf,figureFolder + "/" + "Figure5_EnergyDepthEvolution.png",Resolution=500)
