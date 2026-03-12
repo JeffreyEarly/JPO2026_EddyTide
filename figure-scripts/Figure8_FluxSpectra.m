@@ -1,9 +1,10 @@
 %%
-wvd = WVDiagnostics("../data/bottom-generated-tide-forced-const-N-5cms.nc");
+loadFigureDefaults;
 
 [t_phaseII, t_phaseIII] = computePhaseBoundaries(wvd);
 
 %%
+clear ggg ggw ggw_tx wwg_tx
 ggg.flux = wvd.diagfile.readVariables("geostrophic-flux/ggg");
 ggw.flux = wvd.diagfile.readVariables("geostrophic-flux/ggw");
 ggw_tx.flux = wvd.diagfile.readVariables("geostrophic-flux/ggw_tx");

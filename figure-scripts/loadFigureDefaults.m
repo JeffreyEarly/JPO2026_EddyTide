@@ -3,6 +3,7 @@
 datadir = "../data/";
 datadir = "/Users/jearly/Dropbox/Shared/Luna-Keshav-Jonathan/";
 wvtfilepath = datadir + "bottom-generated-tide-unforced-const-N-5cms.nc";
+maxDays = 500;
 if ~(exist("wvd","var") && wvd.wvpath == wvtfilepath)
     wvd = WVDiagnostics(wvtfilepath);
     wvt = wvd.wvt;

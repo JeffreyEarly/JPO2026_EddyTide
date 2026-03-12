@@ -85,7 +85,7 @@ ylim([-1 0.2])
 %%
 for i=1:3
     nexttile(tl,i)
-    xlim([0 400]),ylim([-0.95 0.95]),yticks(-1:.2:1)
+    xlim([0 maxDays]),ylim([-0.95 0.95]),yticks(-1:.2:1)
     % linestyle thick
     vlines(t_phaseII/86400,'1D:')
     vlines(t_phaseIII/86400,'1D:')

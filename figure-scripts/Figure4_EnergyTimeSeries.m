@@ -54,7 +54,7 @@ text(375,0.3,'(c)')
 axs = packfig(3,1,'rows');
 
 for i=1:3
-    axes(axs(i)),xlim([0 400]),linestyle thick 
+    axes(axs(i)),xlim([0 maxDays]),linestyle thick 
     h = vlines(t_phaseII/86400,'1D:'); h.Annotation.LegendInformation.IconDisplayStyle = 'off';
     h = vlines(t_phaseIII/86400,'1D:'); h.Annotation.LegendInformation.IconDisplayStyle = 'off';
     if i==1

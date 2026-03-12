@@ -7,7 +7,7 @@ y = (wvt.y-mean(wvt.y))/1e3;
 
 ci = (-50:50)./50*.15;
 
-Times = [1,401,801,1201,1601];
+Times = 4*(maxDays/4)*(0:4)+1;
 figure(WindowStyle="normal")
 n=0;
 for j=1:3

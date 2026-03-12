@@ -95,7 +95,7 @@ for i=1:length(ax)
     axes(ax(i))
     pos=get(hcs(i),'position');
     set(hcs(i),'position',[pos(1:2) pos(3)/2 pos(4)])
-    xlim([0 400]),ylim([-2 0]),yticks([-2:.5:0]),
+    xlim([0 maxDays]),ylim([-2 0]),yticks([-2:.5:0]),
     ylabel('Depth (km)'),
     vlines(t_phaseII/86400,'1D:')
     vlines(t_phaseIII/86400,'1D:')
