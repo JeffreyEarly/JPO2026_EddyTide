@@ -13,6 +13,10 @@ filter_phaseI = @(v) mean(v(:,:,wvd.t_diag<t_phaseII),3);
 filter_phaseII = @(v) mean(v(:,:,wvd.t_diag>=t_phaseII & wvd.t_diag<t_phaseIII),3);
 filter_phaseIII = @(v) mean(v(:,:,wvd.t_diag<t_phaseIII),3);
 
+% should we show an rms value? or a max value?
+scalar_val = @(a) mean(sum(a(:).^2));
+% scalar_val = @(a) max(abs(a(:)));
+
 latexSci = @(x) sprintf('$%.1f \\cdot 10^{%d}$', ...
     x ./ 10.^floor(log10(abs(x))), floor(log10(abs(x))));
 
@@ -27,15 +31,15 @@ for iFlux=1:length(inertial_flux_names)
 
 
     a = filter_phaseI(flux)/wvd.flux_scale;
-    flux_rms = mean(sum(a(:).^2));
+    flux_rms = scalar_val(a);
     tableString = tableString + string(latexSci(flux_rms)) + " & ";
 
     a = filter_phaseII(flux)/wvd.flux_scale;
-    flux_rms = mean(sum(a(:).^2));
+    flux_rms = scalar_val(a);
     tableString = tableString + string(latexSci(flux_rms)) + " & ";
 
     a = filter_phaseIII(flux)/wvd.flux_scale;
-    flux_rms = mean(sum(a(:).^2));
+    flux_rms = scalar_val(a);
     tableString = tableString + string(latexSci(flux_rms));
     tableString = tableString + " \\ " + newline;
 end
