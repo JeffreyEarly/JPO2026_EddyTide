@@ -8,13 +8,14 @@ loadFigureDefaults;
 
 [E_g,KE_g,PE_g,E_mda,E_w,E_io,ke,pe_quad,ape] = wvd.diagfile.readVariables('E_g','KE_g','PE_g','E_mda','E_w','E_io','ke','pe_quadratic','ape');
 [Z_quad,Z_apv] = wvd.diagfile.readVariables('enstrophy_quadratic','enstrophy_apv');
+t = wvd.t_wv/86400;
 
 totalEnergy = ke + pe_quad;
 totalEnergy_ape = ke + ape;
 
 clear ugz vgz wgz 
 
-EddyTideProfiles = ComputeEddyTideProfiles(wvd);
+EddyTideProfiles = computeEddyTideProfiles(wvd);
 use EddyTideProfiles;
 shear_g = squeeze(mean(shsg,[1 2]));
 shear_w = squeeze(mean(shsw+svsw,[1 2]));

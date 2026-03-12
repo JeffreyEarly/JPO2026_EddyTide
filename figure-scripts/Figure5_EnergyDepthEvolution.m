@@ -15,7 +15,7 @@ eddyProperties.g = wvt.g;
 eddyProperties.rho0 =  wvt.rho0;
 use eddyProperties
 
-EddyTideProfiles = ComputeEddyTideProfiles(wvd);
+EddyTideProfiles = computeEddyTideProfiles(wvd);
 use EddyTideProfiles;
 
 E0 = mean(mean(hkeg(:,:,1)+peg(:,:,1),1),2);

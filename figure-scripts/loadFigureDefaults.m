@@ -2,7 +2,7 @@
 % diagnostics file, and the EddyTideProfiles.mat
 datadir = "../data/";
 datadir = "/Users/jearly/Dropbox/Shared/Luna-Keshav-Jonathan/";
-wvtfilepath = datadir + "bottom-generated-tide-forced-const-N-5cms.nc";
+wvtfilepath = datadir + "bottom-generated-tide-unforced-const-N-5cms.nc";
 if ~(exist("wvd","var") && wvd.wvpath == wvtfilepath)
     wvd = WVDiagnostics(wvtfilepath);
     wvt = wvd.wvt;
@@ -13,7 +13,7 @@ FigureWidth1Col = 19*12;
 FigureWidth23Page = 27*12;
 FigureWidth2Col = 33*12;
 
-figureFolder = "./figures";
+figureFolder = "./figures-unforced";
 if ~exist(figureFolder, 'dir')
     mkdir(figureFolder)
 end
