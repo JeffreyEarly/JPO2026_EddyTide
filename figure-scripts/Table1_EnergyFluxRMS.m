@@ -14,8 +14,10 @@ filter_phaseII = @(v) mean(v(:,:,wvd.t_diag>=t_phaseII & wvd.t_diag<t_phaseIII),
 filter_phaseIII = @(v) mean(v(:,:,wvd.t_diag<t_phaseIII),3);
 
 % should we show an rms value? or a max value?
-scalar_val = @(a) mean(sum(a(:).^2));
-% scalar_val = @(a) max(abs(a(:)));
+% scalar_val = @(a) mean(sum(a(:).^2)); % mean-square
+scalar_val = @(a) sqrt(mean(sum(a(:).^2))); % root-mean-square
+% scalar_val = @(a) max(abs(a(:))); % maximum magnitude
+% scalar_val = @(a) mean(abs(a(:))); % mean magnitude
 
 latexSci = @(x) sprintf('$%.1f \\cdot 10^{%d}$', ...
     x ./ 10.^floor(log10(abs(x))), floor(log10(abs(x))));
