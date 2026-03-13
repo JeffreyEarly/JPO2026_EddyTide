@@ -11,11 +11,11 @@ wwg_tx.flux = wvd.diagfile.readVariables("geostrophic-flux/wwg_tx");
 
 filter_phaseI = @(v) mean(v(:,:,wvd.t_diag<t_phaseII),3);
 filter_phaseII = @(v) mean(v(:,:,wvd.t_diag>=t_phaseII & wvd.t_diag<t_phaseIII),3);
-filter_phaseIII = @(v) mean(v(:,:,wvd.t_diag<t_phaseIII),3);
+filter_phaseIII = @(v) mean(v(:,:,wvd.t_diag>=t_phaseIII),3);
 
 % should we show an rms value? or a max value?
 % scalar_val = @(a) mean(sum(a(:).^2)); % mean-square
-scalar_val = @(a) sqrt(mean(sum(a(:).^2))); % root-mean-square
+scalar_val = @(a) sqrt(mean(a(:).^2)); % root-mean-square
 % scalar_val = @(a) max(abs(a(:))); % maximum magnitude
 % scalar_val = @(a) mean(abs(a(:))); % mean magnitude
 
