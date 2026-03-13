@@ -14,11 +14,13 @@ contour(wvt.kAxis,wvt.j,intrinsicFrequenciesKJ.'/wvt.f,(0:.1:1),...
 contour(wvt.kAxis,wvt.j,intrinsicFrequenciesKJ.'/wvt.f,(1.1:.1:2),...
     'color',highcontourcolor,'LineWidth',0.5);
 
-MAp = zeros(wvt.spectralMatrixSize);
-force = wvt.forcingWithName("M2-tidal-forcing");
-MAp(force.Ap_indices) = 1;
-for iJ=1:max(wvt.j)
-    hs = scatter(wvt.K(MAp ==1 & wvt.J == iJ),iJ,50);
+if any(strcmp("M2-tidal-forcing",wvt.forcingNames))
+    MAp = zeros(wvt.spectralMatrixSize);
+    force = wvt.forcingWithName("M2-tidal-forcing");
+    MAp(force.Ap_indices) = 1;
+    for iJ=1:max(wvt.j)
+        hs = scatter(wvt.K(MAp ==1 & wvt.J == iJ),iJ,50);
+    end
 end
 
 xlim(2*pi./(1e3*[-15 15]))

@@ -64,7 +64,7 @@ for n = 1:N
         'Color',0.6*[1 1 1])
 
     if n == 1
-        ylabel('Vertical mode')
+        ylabel('Vertical mode number')
         text(800,17,'Wave Spectra','color',0.7*[1 1 1])
     else
         set(gca,'YTickLabels',[])

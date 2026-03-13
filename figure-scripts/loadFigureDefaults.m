@@ -1,8 +1,11 @@
 % datadir should point to the folder where the model output file is, the
 % diagnostics file, and the EddyTideProfiles.mat
-datadir = "../data/";
-datadir = "/Users/jearly/Dropbox/Shared/Luna-Keshav-Jonathan/";
-wvtfilepath = datadir + "bottom-generated-tide-unforced-const-N-5cms.nc";
+% datadir = "../data/";
+% datadir = "/Users/jearly/Dropbox/Shared/Luna-Keshav-Jonathan/";
+datadir = '/Users/cwortham/Documents/research/JeffreyEarly/EddyTideData/';
+
+wvtfilepath = fullfile(datadir,"bottom-generated-tide-unforced-const-N-5cms.nc");
+
 maxDays = 500;
 if ~(exist("wvd","var") && wvd.wvpath == wvtfilepath)
     wvd = WVDiagnostics(wvtfilepath);
@@ -31,8 +34,8 @@ set(groot,'defaultLegendInterpreter','latex')
 set(groot,'defaultLineLineWidth',1.5)
 set(groot,'defaultScatterMarkerFaceColor','k')
 set(groot,'defaultScatterMarkerEdgeColor','white')
-%colorscheme = 'broc';
-colorscheme = 'vic';
+colorscheme = 'broc';
+% colorscheme = 'vic';
 if strcmp(colorscheme,'broc')
     divergingcolormap = WVDiagnostics.crameri('broc');
     sequentialcolormap = flipud(WVDiagnostics.crameri('davos'));
