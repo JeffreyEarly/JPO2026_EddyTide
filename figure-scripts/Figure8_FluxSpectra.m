@@ -133,9 +133,13 @@ function addDeformationLabels
         labels_y{i} = sprintf('%0.0f',2*pi/(10^yticksTemp(i))/1000);
     end
     text(.97*max(xlim)*ones(size(yticksTemp)),yticksTemp,labels_y,...
-        'Color',0.5*[1 1 1],'HorizontalAlignment','center')
+        'Color',0.5*[1 1 1],'HorizontalAlignment','left')
     %text(0.5*min(xlim),1.05*max(ylim),'$L_r$ (km)',...
     %    'Color',0.5*[1 1 1],'HorizontalAlignment','center')
-    text(.92*max(xlim),mean(ylim),'$L_r$ (km)','Color',0.5*[1 1 1],...
-        'HorizontalAlignment', 'center', 'Rotation', 90);
+    text(.92*max(xlim),mean(ylim),'$2 \pi L_r$ (km)','Color',0.5*[1 1 1],...
+        'HorizontalAlignment', 'center','VerticalAlignment','top', 'Rotation', 90);
 end
+
+set(gcf,'Units','inches')
+set(gcf,'Position',[1 1 10 6.66])
+exportgraphics(gcf,figureFolder + "/" + "Figure8_FluxSpectra.png",Resolution=500)
