@@ -52,24 +52,25 @@ yAxisLabel = "vertical mode";
 vDLTW = 10^(-3.9);
 jmax=(2*pi/9e3);
 kmax=(2*pi/9e3);
-quiverScale=20;
+quiverScaleGGG=20;
+quiverScaleGGW=10*quiverScaleGGG;
 
 clear tempFlux
 
 tile = nexttile(tl,1);
 tempFlux.flux = filter_phaseI(ggg.flux)/wvd.flux_scale;
-wvd.plotPoissonFlowOverContours(figureHandle=tile,vectorDensityLinearTransitionWavenumber=vDLTW,jmax=jmax,kmax=kmax,quiverScale=quiverScale,inertialFlux=tempFlux,addFrequencyContours=false,addKEPEContours=true,yAxisLabel=yAxisLabel);
+wvd.plotPoissonFlowOverContours(figureHandle=tile,vectorDensityLinearTransitionWavenumber=vDLTW,jmax=jmax,kmax=kmax,quiverScale=quiverScaleGGG,inertialFlux=tempFlux,addFrequencyContours=false,addKEPEContours=true,yAxisLabel=yAxisLabel);
 fig.Children(1).Visible='off';
 % title("ggg, Phase I")
 title("Phase I")
 xlabel([])
 xticklabels([])
-text(tile.XLim(1),tile.YLim(2),'ggg flux','Color','k','HorizontalAlignment','left','VerticalAlignment','top')
+text(.99*tile.XLim(1),.99*tile.YLim(1),'ggg flux','Color','k','HorizontalAlignment','left','VerticalAlignment','bottom')
 box on
 
 tile = nexttile(tl,2);
 tempFlux.flux = filter_phaseII(ggg.flux)/wvd.flux_scale;
-wvd.plotPoissonFlowOverContours(figureHandle=tile,vectorDensityLinearTransitionWavenumber=vDLTW,jmax=jmax,kmax=kmax,quiverScale=quiverScale,inertialFlux=tempFlux,addFrequencyContours=false,addKEPEContours=true,yAxisLabel=yAxisLabel);
+wvd.plotPoissonFlowOverContours(figureHandle=tile,vectorDensityLinearTransitionWavenumber=vDLTW,jmax=jmax,kmax=kmax,quiverScale=quiverScaleGGG,inertialFlux=tempFlux,addFrequencyContours=false,addKEPEContours=true,yAxisLabel=yAxisLabel);
 fig.Children(1).Visible='off';
 % title("ggg, Phase II")
 title("Phase II")
@@ -81,7 +82,7 @@ box on
 
 tile = nexttile(tl,3);
 tempFlux.flux = filter_phaseIII(ggg.flux)/wvd.flux_scale;
-wvd.plotPoissonFlowOverContours(figureHandle=tile,vectorDensityLinearTransitionWavenumber=vDLTW,jmax=jmax,kmax=kmax,quiverScale=quiverScale,inertialFlux=tempFlux,addFrequencyContours=false,addKEPEContours=true,yAxisLabel=yAxisLabel);
+wvd.plotPoissonFlowOverContours(figureHandle=tile,vectorDensityLinearTransitionWavenumber=vDLTW,jmax=jmax,kmax=kmax,quiverScale=quiverScaleGGG,inertialFlux=tempFlux,addFrequencyContours=false,addKEPEContours=true,yAxisLabel=yAxisLabel);
 fig.Children(1).Visible='off';
 % title("ggg, Phase III")
 title("Phase III")
@@ -94,15 +95,20 @@ addDeformationLabels
 
 tile = nexttile(tl,4);
 tempFlux.flux = filter_phaseI(ggw.flux)/wvd.flux_scale;
-wvd.plotPoissonFlowOverContours(figureHandle=tile,vectorDensityLinearTransitionWavenumber=vDLTW,jmax=jmax,kmax=kmax,quiverScale=quiverScale,inertialFlux=tempFlux,addFrequencyContours=false,addKEPEContours=true,yAxisLabel=yAxisLabel);
+wvd.plotPoissonFlowOverContours(figureHandle=tile,vectorDensityLinearTransitionWavenumber=vDLTW,jmax=jmax,kmax=kmax,quiverScale=quiverScaleGGW,inertialFlux=tempFlux,addFrequencyContours=false,addKEPEContours=true,yAxisLabel=yAxisLabel);
 fig.Children(1).Visible='off';
 % title("ggw, Phase I")
-text(tile.XLim(1),tile.YLim(2),'ggw flux','Color','k','HorizontalAlignment','left','VerticalAlignment','top')
+if quiverScaleGGW==quiverScaleGGG
+    ggwStr = 'ggw flux';
+else
+    ggwStr = sprintf('ggw flux $\\times%d$',quiverScaleGGW/quiverScaleGGG);
+end
+text(.99*tile.XLim(1),.99*tile.YLim(1),ggwStr,'Color','k','HorizontalAlignment','left','VerticalAlignment','bottom')
 box on
 
 tile = nexttile(tl,5);
 tempFlux.flux = filter_phaseII(ggw.flux)/wvd.flux_scale;
-wvd.plotPoissonFlowOverContours(figureHandle=tile,vectorDensityLinearTransitionWavenumber=vDLTW,jmax=jmax,kmax=kmax,quiverScale=quiverScale,inertialFlux=tempFlux,addFrequencyContours=false,addKEPEContours=true,yAxisLabel=yAxisLabel);
+wvd.plotPoissonFlowOverContours(figureHandle=tile,vectorDensityLinearTransitionWavenumber=vDLTW,jmax=jmax,kmax=kmax,quiverScale=quiverScaleGGW,inertialFlux=tempFlux,addFrequencyContours=false,addKEPEContours=true,yAxisLabel=yAxisLabel);
 fig.Children(1).Visible='off';
 % title("ggw, Phase II")
 ylabel([])
@@ -111,7 +117,7 @@ box on
 
 tile = nexttile(tl,6);
 tempFlux.flux = filter_phaseIII(ggw.flux)/wvd.flux_scale;
-wvd.plotPoissonFlowOverContours(figureHandle=tile,vectorDensityLinearTransitionWavenumber=vDLTW,jmax=jmax,kmax=kmax,quiverScale=quiverScale,inertialFlux=tempFlux,addFrequencyContours=false,addKEPEContours=true,yAxisLabel=yAxisLabel);
+wvd.plotPoissonFlowOverContours(figureHandle=tile,vectorDensityLinearTransitionWavenumber=vDLTW,jmax=jmax,kmax=kmax,quiverScale=quiverScaleGGW,inertialFlux=tempFlux,addFrequencyContours=false,addKEPEContours=true,yAxisLabel=yAxisLabel);
 fig.Children(1).Visible='off';
 % title("ggw, Phase III")
 ylabel([])
@@ -126,10 +132,10 @@ function addDeformationLabels
     for i=1:length(yticksTemp)
         labels_y{i} = sprintf('%0.0f',2*pi/(10^yticksTemp(i))/1000);
     end
-    text(.95*max(xlim)*ones(size(yticksTemp)),yticksTemp,labels_y,...
+    text(.97*max(xlim)*ones(size(yticksTemp)),yticksTemp,labels_y,...
         'Color',0.5*[1 1 1],'HorizontalAlignment','center')
     %text(0.5*min(xlim),1.05*max(ylim),'$L_r$ (km)',...
     %    'Color',0.5*[1 1 1],'HorizontalAlignment','center')
-    text(.9*max(xlim),mean(ylim),'$L_r$ (km)','Color',0.5*[1 1 1],...
+    text(.92*max(xlim),mean(ylim),'$L_r$ (km)','Color',0.5*[1 1 1],...
         'HorizontalAlignment', 'center', 'Rotation', 90);
 end
