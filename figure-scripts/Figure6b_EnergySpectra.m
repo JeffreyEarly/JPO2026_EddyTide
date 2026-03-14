@@ -17,8 +17,8 @@ v = [1 2 3 4]; %levels for frequency contours
 wvd.iTime = options.iTime{1};
 
 % %create radial wavelength vectors
-% radialWavelength = 2*pi./wvd.wvt.kRadial/1000;
-% radialWavelength(1) = 2*radialWavelength(2); %What is this? 
+radialWavelength = 2*pi./wvd.wvt.kRadial/1000;
+radialWavelength(1) = 2*radialWavelength(2); %What is this? 
 % 
 % jWavelength = 2*pi./wvd.jWavenumber/1000;
 
