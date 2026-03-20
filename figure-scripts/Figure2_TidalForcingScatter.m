@@ -19,7 +19,7 @@ if any(strcmp("M2-tidal-forcing",wvt.forcingNames))
     force = wvt.forcingWithName("M2-tidal-forcing");
     MAp(force.Ap_indices) = 1;
     for iJ=1:max(wvt.j)
-        hs = scatter(wvt.K(MAp ==1 & wvt.J == iJ),iJ,50);
+        hs = scatter(wvt.K(MAp ==1 & wvt.J == iJ),wvt.j(iJ),50); 
     end
 end
 

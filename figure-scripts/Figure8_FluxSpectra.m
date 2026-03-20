@@ -52,7 +52,7 @@ yAxisLabel = "vertical mode";
 vDLTW = 10^(-3.9);
 jmax=(2*pi/9e3);
 kmax=(2*pi/9e3);
-quiverScaleGGG=20;
+quiverScaleGGG=40;
 quiverScaleGGW=10*quiverScaleGGG;
 
 clear tempFlux

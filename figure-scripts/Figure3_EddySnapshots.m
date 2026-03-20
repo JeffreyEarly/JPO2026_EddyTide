@@ -30,7 +30,8 @@ for j=1:3
         zeta(zeta>max(ci))=max(ci);
         jpcolor(x, y, zeta'), axis equal, axis tight
         axis equal, axis tight
-        clim([-.15 .15])
+        %clim([-.15 .15])
+        clim([-.12 .12])
         if i==1 && j==2
             hc = colorbar(gca,'South');
             hc.Label.String = 'Relative Vorticity $\zeta/f_0$';

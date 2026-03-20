@@ -111,8 +111,9 @@ for n = 1:N
             'HorizontalAlignment', 'center', 'Rotation', 90);
     end
     %text(10^2.95,17.25,['(' setstr(real('a')+5+(n-1)) ')'])
-    axis square, xlabel('Wavelength (km)')
+    axis square, xlabel('Horizontal wavelength (km)')
     colormap(sequentialcolormap)
+
 end
 
 set(gcf,'Units','inches')

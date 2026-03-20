@@ -73,7 +73,7 @@ contour(t,wvt.z/1000,squeeze(mean(Yg,2))./Yg0,ci2*max(clim),...
     'color',highcontourcolor)
 hc=colorbar('Location','EastOutside');
 hc.Label.Interpreter='latex';
-hc.Label.String='Squared APV $p^2$';
+hc.Label.String='Squared APV';
 hcs(4)=hc;
 
 subplot(5,1,5),
@@ -100,15 +100,25 @@ for i=1:length(ax)
     vlines(t_phaseII/86400,'1D:')
     vlines(t_phaseIII/86400,'1D:')
     text(5,-1.85,['(' char(real('a')+i-1) ')'],'color',0.7*[1 1 1])
-    colormap(sequentialcolormap)
+    if i == 4
+        cmocean('tempo')
+    
+    elseif i == 5
+        cmocean('dense')
+    else
+        colormap(sequentialcolormap)
+    end
     hlines(-He/1000,'2w')
     hlines(-He/1000,'1k:')
 end
 
 axes(ax(4))
-text(80,-1.5,'Phase I','color',0.7*[1 1 1])
-text(235,-1.5,'Phase II','color',0.7*[1 1 1])
-text(330,-1.5,'Phase III','color',0.7*[1 1 1])
+% text(80,-1.5,'Phase I','color',0.7*[1 1 1])
+% text(235,-1.5,'Phase II','color',0.7*[1 1 1])
+% text(330,-1.5,'Phase III','color',0.7*[1 1 1])
+text(t(1)+(t_phaseII/86400-t(1))/2.5,-1.5,'Phase I','color',0.7*[1 1 1])
+text((t_phaseII+(t_phaseIII-t_phaseII)/4)/86400,-1.5,'Phase II','color',0.7*[1 1 1])
+text((t_phaseIII/86400+(maxDays-t_phaseIII/86400)/6),-1.5,'Phase III','color',0.7*[1 1 1])
 
 % fontsize 10 10 10 10
 set(gcf,'Units','inches')

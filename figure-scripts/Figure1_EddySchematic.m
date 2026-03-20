@@ -104,7 +104,8 @@ clim([1025 1029])
 vlines([-80 80]/sqrt(2),'0.65k:')
 vlines([-80 80],'0.65w:')
 hlines(-He/1000,'0.65k:')
-xlabel('North-South Location (km)')
+%xlabel('North-South Location (km)')
+xlabel('South-North Location (km)')
 ylabel('Depth (km)'),
 yticks((-2:.2:0))
 

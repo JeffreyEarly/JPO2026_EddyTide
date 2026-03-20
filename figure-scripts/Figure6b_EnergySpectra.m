@@ -80,7 +80,8 @@ for n = 1:N
     val(val==-inf) = energy_limits(1);
 
     % jpcolor(flipud(radialWavelength),wvd.wvt.j,fliplr(val)), xlog, flipx, hold on
-    % xlim([min(radialWavelength) max(radialWavelength)]), ylim([-0.5 18.5]), yticks(0:2:18), clim(energy_limits)
+     xlim([min(radialWavelength) max(radialWavelength)]), 
+    %ylim([-0.5 18.5]), yticks(0:2:18), clim(energy_limits)
     pcolor(2*pi./kPseudoLocation/1000,jPseudoLocation,val), shading flat, hold on
     set(gca,'XDir','reverse')
     set(gca,'XScale','log')
@@ -89,6 +90,7 @@ for n = 1:N
     jInd = [1,2,3,4,5,6,11:10:length(wvt.j)];
     set(gca,'YTick', jPseudoLocation(jInd));
     set(gca,'YTickLabel', wvt.j(jInd));
+    %
     clim(energy_limits)
    
     contour(radialWavelength,wvd.wvt.j',omegaJK,[v(1) v(1)],'k','LineWidth',0.5)
@@ -118,7 +120,7 @@ for n = 1:N
 
     % jpcolor(flipud(radialWavelength),wvd.wvt.j,fliplr(val)), xlog, flipx
     % xlim([min(radialWavelength) max(radialWavelength)]), ylim([-0.5 18.5])
-    % yticks(0:2:18),xticks([10^1 10^2 10^3])
+    % yticks(0:2:18),
     pcolor(2*pi./kPseudoLocation/1000,jPseudoLocation,val), shading flat, hold on
     set(gca,'XDir','reverse')
     set(gca,'XScale','log')
@@ -151,10 +153,11 @@ for n = 1:N
             'HorizontalAlignment', 'center', 'Rotation', 90);
     end
     %text(10^2.95,17.25,['(' setstr(real('a')+5+(n-1)) ')'])
-    axis square, xlabel('Wavelength (km)')
+    xlim([min(radialWavelength) max(radialWavelength)]), xticks([10^1 10^2 10^3])
+    axis square, xlabel('Horizontal wavelength (km)')
     colormap(sequentialcolormap)
 end
 
 set(gcf,'Units','inches')
 set(gcf,'Position',[1 1 10 4.72])
-exportgraphics(gcf,figureFolder + "/" + "Figure6_EnergySpectra.png",Resolution=500)
+exportgraphics(gcf,figureFolder + "/" + "Figure6_EnergySpectra_v2.png",Resolution=500)

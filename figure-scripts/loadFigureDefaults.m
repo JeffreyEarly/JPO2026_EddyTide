@@ -2,11 +2,24 @@
 % diagnostics file, and the EddyTideProfiles.mat
 % datadir = "../data/";
 % datadir = "/Users/jearly/Dropbox/Shared/Luna-Keshav-Jonathan/";
-datadir = '/Users/cwortham/Documents/research/JeffreyEarly/EddyTideData/';
+% datadir = '/Users/cwortham/Documents/research/JeffreyEarly/EddyTideData/';
 
+%% Forced
+% simul_type = "Forced";
+% datadir = '/Users/lunahiron/Documents/Projects/EddyWave/data/forced/';
+% wvtfilepath = fullfile(datadir,"bottom-generated-tide-forced-const-N-5cms.nc");
+% 
+% figureFolder = "./figures-forced";
+% maxDays = 500;
+%% Unforced
+simul_type = "Unforced";
+datadir = '/Users/lunahiron/Documents/Projects/EddyWave/data/unforced/';
 wvtfilepath = fullfile(datadir,"bottom-generated-tide-unforced-const-N-5cms.nc");
 
-maxDays = 500;
+figureFolder = "./figures-unforced";
+maxDays = 600;
+%%
+
 if ~(exist("wvd","var") && wvd.wvpath == wvtfilepath)
     wvd = WVDiagnostics(wvtfilepath);
     wvt = wvd.wvt;
@@ -17,7 +30,6 @@ FigureWidth1Col = 19*12;
 FigureWidth23Page = 27*12;
 FigureWidth2Col = 33*12;
 
-figureFolder = "./figures-unforced";
 if ~exist(figureFolder, 'dir')
     mkdir(figureFolder)
 end
