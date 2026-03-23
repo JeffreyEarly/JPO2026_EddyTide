@@ -53,17 +53,17 @@ text(maxDays-30,0.63,'(b)')
 subplot(3,1,3)
 if strcmp(simul_type,"Unforced")
     hl = plot(t,shear_g./shear_g(1),'Color',[0.9290    0.6940    0.1250], 'LineWidth', 2);
-    legend('Geostrophic Squared Shear','Location','Northwest')
+    legend('Geostrophic Squared Vertical Shear','Location','Northwest')
     ylim([0.8 3])%,ylog
     text(maxDays-30,0.9,'(c)')
 elseif strcmp(simul_type,"Forced")
     hl = plot(t,[shear_t shear_w 10*shear_g]./shear_t(1), 'LineWidth', 3);
     legend('Total Squared Shear','Wave Squared Shear',...
-        'Geostrophic Squared Shear $\times$ 10','Location','Northwest')
+        'Geostrophic Squared Vertical Shear $\times$ 10','Location','Northwest')
     ylim([0 7])%,ylog
     text(maxDays-30,0.3,'(c)')
 end
-ylabel('Normalized Squared Shear')
+ylabel('Normalized Squared Vertical Shear')
 xlabel('Time (days)')
 %text(375,0.3,'(c)')
 

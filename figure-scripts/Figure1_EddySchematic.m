@@ -205,7 +205,7 @@ z = wvt.z;
 x=wvt.x-mean(wvt.x);
 [xg,zg] = ndgrid(x,z);
 
-Times = 1:14*4:407*4;
+Times = 1:14*4:maxDays*4;
 for j = 1:2
     if j == 1
         n=18;%North-south slice through tripole at 238 days

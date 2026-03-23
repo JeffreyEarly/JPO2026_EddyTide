@@ -158,9 +158,14 @@ exportgraphics(gcf,figureFolder + "/" + "Figure3_EddySnapShots.png",Resolution=5
 %--------------------------------------------------------------------------
 %Eddy Movie
 
-if false
-for  n = 561:1601
-    wvt.initFromNetCDFFile(ncfile,iTime=n)
+
+if true
+
+figure(WindowStyle="normal")
+
+for  n = 561:4:maxDays*4+1 %1601
+    %wvt.initFromNetCDFFile(ncfile,iTime=n)
+     wvd.iTime = n;
 
     subplot(2,1,1)
 
@@ -177,7 +182,7 @@ for  n = 561:1601
     hc.Label.Interpreter = 'latex';
     hc.Ticks = (-0.1:.1:.1);
     
-    text(160,340,['t = ' int2str(t(n)) ' days']);
+    text(160,340,['t = ' int2str(n/4) ' days']);
     text(-340,340,'z = 0 m');
     colormap(divergingcolormap)
     xtick(-400:100:400),ytick(-400:100:400)
@@ -198,15 +203,19 @@ for  n = 561:1601
     hc.Label.Interpreter = 'latex';
     hc.Ticks = (-0.04:.02:.04);
 
-    text(160,340,['t = ' int2str(t(n)) ' days']);
+    text(160,340,['t = ' int2str(n/4) ' days']);
     text(-340,340,'z = -689 m');
     colormap(divergingcolormap)
     xtick(-400:100:400),ytick(-400:100:400)
     noxlabels, noylabels, xticks([]),yticks([])
 
-    set(gcf,'paperposition',[1 1 6 8])
+    %set(gcf,'paperposition',[1 1 6 8])
     packfig(2,1)
 
-    jprint([printdir '/movie'],['frame' int2str(n)],'-r500')
+    if n == 561
+        set(gcf,'Units','inches')
+        set(gcf,'Position',[1 1 20 12])
+    end
+ jprint([figureFolder + '/movie'],['frame' int2str(n)],'-r500')
 end
 end

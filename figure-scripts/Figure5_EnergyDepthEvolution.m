@@ -73,7 +73,8 @@ contour(t,wvt.z/1000,squeeze(mean(Yg,2))./Yg0,ci2*max(clim),...
     'color',highcontourcolor)
 hc=colorbar('Location','EastOutside');
 hc.Label.Interpreter='latex';
-hc.Label.String='Squared APV';
+hc.Label.String='Potential Enstrophy $\mathcal{Z}$';
+%hc.Label.String='Squared APV';
 hcs(4)=hc;
 
 subplot(5,1,5),
@@ -85,7 +86,7 @@ contour(t,wvt.z/1000,squeeze(mean(shsg,2))./shsg0,ci2*max(clim),...
     'color',highcontourcolor)
 hc=colorbar('Location','EastOutside');
 hc.Label.Interpreter='latex';
-hc.Label.String='Squared Geostrophic Shear';
+hc.Label.String='Geostrophic Squared Vertical Shear';
 xlabel('Time (days)')
 hcs(5)=hc;
 
@@ -123,7 +124,7 @@ text((t_phaseIII/86400+(maxDays-t_phaseIII/86400)/6),-1.5,'Phase III','color',0.
 % fontsize 10 10 10 10
 set(gcf,'Units','inches')
 set(gcf,'Position',[1 1 5 12])
-exportgraphics(gcf,figureFolder + "/" + "Figure5_EnergyDepthEvolution.png",Resolution=500)
+exportgraphics(gcf,figureFolder + "/" + "Figure5_EnergyDepthEvolution_units.png",Resolution=500)
 
 %keprof= squeeze(mean(hkeg,2));
 %plot(wvt.z/1000,keprof(:,end)-keprof(:,1))
