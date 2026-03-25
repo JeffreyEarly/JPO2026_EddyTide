@@ -159,7 +159,7 @@ exportgraphics(gcf,figureFolder + "/" + "Figure3_EddySnapShots.png",Resolution=5
 %Eddy Movie
 
 
-if true
+if false
 
 figure(WindowStyle="normal")
 
