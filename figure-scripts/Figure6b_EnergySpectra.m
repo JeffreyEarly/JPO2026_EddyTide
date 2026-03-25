@@ -16,9 +16,11 @@ v = [1 2 3 4]; %levels for frequency contours
 
 wvd.iTime = options.iTime{1};
 
-% %create radial wavelength vectors
+% create radial wavelength vectors
+% We will pretend the "0" wavelength is actually evenly spaced
+% from the nearest two wavenumbers
 radialWavelength = 2*pi./wvd.wvt.kRadial/1000;
-radialWavelength(1) = 2*radialWavelength(2); %What is this? 
+radialWavelength(1) = 2*radialWavelength(2);  
 % 
 % jWavelength = 2*pi./wvd.jWavenumber/1000;
 
@@ -42,7 +44,6 @@ jPseudoLocationWVD(1) = exp(-log(jPseudoLocationWVD(3)) + 2*log(jPseudoLocationW
 kPaddedWVD = cat(1,0,kPseudoLocationWVD);
 jPaddedWVD = cat(1,0,jPseudoLocationWVD);
 [KPaddedWVD,JPaddedWVD] = ndgrid(kPaddedWVD,jPaddedWVD);
-
 
 
 % location for x-z section
@@ -79,18 +80,15 @@ for n = 1:N
     val = log10(TE_Apm_j_kR);
     val(val==-inf) = energy_limits(1);
 
-    % jpcolor(flipud(radialWavelength),wvd.wvt.j,fliplr(val)), xlog, flipx, hold on
-     xlim([min(radialWavelength) max(radialWavelength)]), 
-    %ylim([-0.5 18.5]), yticks(0:2:18), clim(energy_limits)
     pcolor(2*pi./kPseudoLocation/1000,jPseudoLocation,val), shading flat, hold on
+    xlim([min(radialWavelength) max(radialWavelength)])
     set(gca,'XDir','reverse')
     set(gca,'XScale','log')
     set(gca,'YScale','log')
     % manually set yticks
     jInd = [1,2,3,4,5,6,11:10:length(wvt.j)];
-    set(gca,'YTick', jPseudoLocation(jInd));
+    set(gca,'YTick', jPseudoLocation(jInd)+1/4);
     set(gca,'YTickLabel', wvt.j(jInd));
-    %
     clim(energy_limits)
    
     contour(radialWavelength,wvd.wvt.j',omegaJK,[v(1) v(1)],'k','LineWidth',0.5)
@@ -104,30 +102,24 @@ for n = 1:N
         set(gca,'YTickLabels',[])
     end
 
-    if n == N
-        cb = colorbar;
-        cb.Label.String = 'Log_{10} Energy Density (m^3 s^{-2})';
-    end
-    %text(10^2.95,17.25,['(' char(real('a')+(n-1)) ')'])
     axis square
-    noxlabels
+    set(gca,'XTickLabel',[])
     colormap(sequentialcolormap)
     title(['T = ' num2str(round(t(options.iTime{n}))) ' days'])
+    
     %geostrophic energy spectrum
     nexttile(tl,n+N);
     val = log10(TE_A0_j_kR);
     val(val==-inf) = energy_limits(1); 
 
-    % jpcolor(flipud(radialWavelength),wvd.wvt.j,fliplr(val)), xlog, flipx
-    % xlim([min(radialWavelength) max(radialWavelength)]), ylim([-0.5 18.5])
-    % yticks(0:2:18),
     pcolor(2*pi./kPseudoLocation/1000,jPseudoLocation,val), shading flat, hold on
+    xlim([min(radialWavelength) max(radialWavelength)])
     set(gca,'XDir','reverse')
     set(gca,'XScale','log')
     set(gca,'YScale','log')
     % manually set yticks
     jInd = [1,2,3,4,5,6,11:10:length(wvt.j)];
-    set(gca,'YTick', jPseudoLocation(jInd));
+    set(gca,'YTick', jPseudoLocation(jInd)+1/4);
     set(gca,'YTickLabel', wvt.j(jInd));
     clim(energy_limits)
     
@@ -138,25 +130,28 @@ for n = 1:N
         set(gca,'YTickLabels',[])
     end
 
-    if n == N
-        yticksTemp = yticks;
-        ticks_y = 2*pi*sqrt(wvd.wvt.Lr2)./1000;
-        labels_y = cell(length(yticksTemp),1);
-        for i=1:length(yticksTemp)
-            labels_y{i} = sprintf('%0.0f',ticks_y(wvt.j(jInd(i))+1));
-        end
-        text(0.6*min(xlim)*ones(size(yticksTemp)),yticksTemp,labels_y,...
-            'Color',0.5*[1 1 1],'HorizontalAlignment','center')
-        %text(0.5*min(xlim),1.05*max(ylim),'$L_r$ (km)',...
-        %    'Color',0.5*[1 1 1],'HorizontalAlignment','center')
-        text(0.3*min(xlim),10^mean(log10(ylim)),'$2 \pi L_r$ (km)','Color',0.5*[1 1 1],...
-            'HorizontalAlignment', 'center', 'Rotation', 90);
-    end
-    %text(10^2.95,17.25,['(' setstr(real('a')+5+(n-1)) ')'])
+    % if n == N
+    %     yticksTemp = yticks;
+    %     ticks_y = 2*pi*sqrt(wvd.wvt.Lr2)./1000;
+    %     labels_y = cell(length(yticksTemp),1);
+    %     for i=1:length(yticksTemp)
+    %         labels_y{i} = sprintf('%0.0f',ticks_y(wvt.j(jInd(i))+1));
+    %     end
+    %     text(0.6*min(xlim)*ones(size(yticksTemp)),yticksTemp,labels_y,...
+    %         'Color',0.5*[1 1 1],'HorizontalAlignment','center')
+    %     %text(0.5*min(xlim),1.05*max(ylim),'$L_r$ (km)',...
+    %     %    'Color',0.5*[1 1 1],'HorizontalAlignment','center')
+    %     text(0.3*min(xlim),10^mean(log10(ylim)),'$2 \pi L_r$ (km)','Color',0.5*[1 1 1],...
+    %         'HorizontalAlignment', 'center', 'Rotation', 90);
+    % end
     xlim([min(radialWavelength) max(radialWavelength)]), xticks([10^1 10^2 10^3])
     axis square, xlabel('Horizontal wavelength (km)')
     colormap(sequentialcolormap)
 end
+
+cb = colorbar;
+cb.Layout.Tile = 'east';
+cb.Label.String = 'Log_{10} Energy Density (m^3 s^{-2})';
 
 set(gcf,'Units','inches')
 set(gcf,'Position',[1 1 10 4.72])
