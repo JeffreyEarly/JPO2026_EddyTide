@@ -1,13 +1,11 @@
 %% Minimal Eddy Bottom Tide Simulation
 %
 % This script is a minimal, constant-stratification version of
-% `EddyTideSimulation.m`. It initializes the wave-vortex state before the
-% `if isForced` branch, so the forced and unforced runs start from the same
+% `EddyTideSimulation.m`. The forced and unforced runs start from the same
 % `A0`, `Ap`, and `Am` coefficients; the forced case only adds
 % `WVFixedAmplitudeForcing` during time stepping.
 %
-% The horizontal carrier modes are chosen from the discrete semidiurnal
-% spectrum. Let
+% The wave-forcing is from the discrete semidiurnal spectrum. Let
 %
 % $$\omega_{M2} = \frac{2\pi}{T_{M2}}.$$
 %
@@ -35,11 +33,10 @@
 Nxy = 256;
 lat = 45;
 
-isForced = false;
-maxT = 400*86400; % integration time, inertial periods
+isForced = true;
+maxT = 600*86400; % integration time, inertial periods
 u0_wave = 0.05;
 
-strat_type = "const";
 N0 = sqrt(2e-5);
 Lz = 2000;
 N2 = @(z) N0*N0*ones(size(z));
@@ -64,17 +61,14 @@ svv = wvt.forcingWithName("adaptive damping");
 % the damping region.
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-Omega = wvt.Omega;
 maskApSD = zeros(wvt.spectralMatrixSize);
-allIndices = 1:numel(Omega);
 for iJ=1:max(wvt.j)
-    indices = wvt.L==0 & wvt.j==iJ & wvt.Kh < svv.k_damp & wvt.J < svv.j_damp;
-    if sum(indices(:)) == 0
+    indices = find(wvt.L==0 & wvt.j==iJ & wvt.Kh < svv.k_damp & wvt.J < svv.j_damp);
+    if isempty(indices)
         continue
     end
-    [~,minIndexSubset] = min(abs(Omega(indices) - 2*pi/M2Period));
-    subsetIndices = allIndices(indices);
-    maskApSD(subsetIndices(minIndexSubset)) = 1;
+    [~,minIndexSubset] = min(abs(wvt.Omega(indices) - 2*pi/M2Period));
+    maskApSD(indices(minIndexSubset)) = 1;
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -94,11 +88,7 @@ for iJ=1:max(wvt.j)
     wvt.Ap(maskApSD ==1 & wvt.J == iJ) = taperJ(iJ);
 end
 
-A = u0_wave/wvt.uvMax; % renormalize the total amplitude we want
-
-for iJ=1:max(wvt.j)
-    wvt.Ap(maskApSD ==1 & wvt.J == iJ) = A*taperJ(iJ);
-end
+wvt.Ap = u0_wave*wvt.Ap/wvt.uvMax; % renormalize the total amplitude we want
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
@@ -131,13 +121,13 @@ wvt.A0(wvt.Kh > svv.k_damp) = 0;
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-if isForced == true
-    filename = sprintf("bottom-generated-tide-forced-"+strat_type+"-N-%dcms-wave-%dcms-eddy.nc",round(100*u0_wave),round(100*U));
+if isForced
+    filename = sprintf("bottom-generated-tide-forced-const-N-%dcms-wave-%dcms-eddy.nc",round(100*u0_wave),round(100*U));
     force = WVFixedAmplitudeForcing(wvt,name="M2-tidal-forcing");
     force.setWaveForcingCoefficients(wvt.Ap,wvt.Am);
     wvt.addForcing(force);
 else
-    filename = sprintf("bottom-generated-tide-unforced-"+strat_type+"-N-%dcms.nc",round(100*u0_wave));
+    filename = sprintf("bottom-generated-tide-unforced-const-N-%dcms.nc",round(100*u0_wave));
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -145,5 +135,5 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 model = WVModel(wvt);
-model.createNetCDFFileForModelOutput(filename,outputInterval=86400/4,shouldOverwriteExisting=false);
+model.createNetCDFFileForModelOutput(filename,outputInterval=86400,shouldOverwriteExisting=false);
 model.integrateToTime(maxT);
