@@ -127,7 +127,7 @@ if isForced
     force.setWaveForcingCoefficients(wvt.Ap,wvt.Am);
     wvt.addForcing(force);
 else
-    filename = sprintf("bottom-generated-tide-unforced-const-N-%dcms.nc",round(100*u0_wave));
+    filename = sprintf("bottom-generated-tide-unforced-const-N-%dcms-wave-%dcms-eddy.nc",round(100*u0_wave),round(100*U));
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
