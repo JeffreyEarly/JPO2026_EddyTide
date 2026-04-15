@@ -87,9 +87,27 @@ for n = 1:N
     set(gca,'XScale','log')
     set(gca,'YScale','log')
     % manually set yticks
-    jInd = [1,2,3,4,5,6,11:10:length(wvt.j)];
-    set(gca,'YTick', jPseudoLocation(jInd)+1/4);
-    set(gca,'YTickLabel', wvt.j(jInd));
+    % jInd = [1,2,3,4,5,6,11:10:length(wvt.j)];
+    % set(gca,'YTick', jPseudoLocation(jInd)+1/4);
+    % set(gca,'YTickLabel', wvt.j(jInd));
+    % set(gca,'YMinorTick','off')
+    % set(gca,'Layer','top')
+    % select reasonable jMode spacing for ticks
+    jMode = [0:9,10:10:90,100:100:900];
+    jMode = jMode(jMode<=max(wvd.j)); % truncate at maximum mode
+    jModePseudo = jMode;
+    jModePseudo(1) = jModePseudo(2)/2;
+    % set tick locations
+    set(gca, 'YTick', jModePseudo+1/4);
+    set(gca,'YMinorTick','off')
+    % set tick labels
+    maxLeadDigit = 5;
+    leadDigit = floor(jMode ./ 10.^floor(log10(jMode)));
+    leadDigit(1) = 0;
+    labels = strings(size(jMode));
+    labels(leadDigit <= maxLeadDigit) = string(jMode(leadDigit <= maxLeadDigit));
+    set(gca,'YTickLabel', labels);
+    set(gca,'Layer','top')
     clim(energy_limits)
    
     contour(radialWavelength,wvd.wvt.j',omegaJK,[v(1) v(1)],'k','LineWidth',0.5)
@@ -119,11 +137,29 @@ for n = 1:N
     set(gca,'XScale','log')
     set(gca,'YScale','log')
     % manually set yticks
-    jInd = [1,2,3,4,5,6,11:10:length(wvt.j)];
-    set(gca,'YTick', jPseudoLocation(jInd)+1/4);
-    set(gca,'YTickLabel', wvt.j(jInd));
+    % jInd = [1,2,3,4,5,6,11:10:length(wvt.j)];
+    % set(gca,'YTick', jPseudoLocation(jInd)+1/4);
+    % set(gca,'YTickLabel', wvt.j(jInd));
+    % set(gca,'YMinorTick','off')
+    % set(gca,'Layer','top')
+    % select reasonable jMode spacing for ticks
+    jMode = [0:9,10:10:90,100:100:900];
+    jMode = jMode(jMode<=max(wvd.j)); % truncate at maximum mode
+    jModePseudo = jMode;
+    jModePseudo(1) = jModePseudo(2)/2;
+    % set tick locations
+    set(gca, 'YTick', jModePseudo+1/4);
+    set(gca,'YMinorTick','off')
+    % set tick labels
+    maxLeadDigit = 5;
+    leadDigit = floor(jMode ./ 10.^floor(log10(jMode)));
+    leadDigit(1) = 0;
+    labels = strings(size(jMode));
+    labels(leadDigit <= maxLeadDigit) = string(jMode(leadDigit <= maxLeadDigit));
+    set(gca,'YTickLabel', labels);
+    set(gca,'Layer','top')
     clim(energy_limits)
-    
+
     if n == 1
         ylabel('Vertical mode number')
         text(800,15,'Geostrophic Spectra','color',0.7*[1 1 1])
