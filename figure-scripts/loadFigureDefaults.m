@@ -12,9 +12,10 @@
 % figureFolder = "./figures-forced";
 % maxDays = 500;
 %% Unforced
-simul_type = "Unforced";
-datadir = '/Users/lunahiron/Documents/Projects/EddyWave/data/unforced/';
-wvtfilepath = fullfile(datadir,"bottom-generated-tide-unforced-const-N-5cms.nc");
+simul_type = "Forced";
+simul_type = "Unforced"; % This flag changes the axis scaling, etc.
+datadir = '/Users/jearly/Documents/OceanKitRepositories/JPO2026_EddyTide/model-output';
+wvtfilepath = fullfile(datadir,"bottom-generated-tide-unforced-const-N-5cms-wave-10cms-eddy.nc");
 
 figureFolder = "./figures-unforced";
 maxDays = 600;

@@ -7,7 +7,9 @@ y = (wvt.y-mean(wvt.y))/1e3;
 
 ci = (-50:50)./50*.15;
 
-Times = 4*(maxDays/4)*(0:4)+1;
+
+incrementsPerDay = round(86400/wvd.t_diag(2));
+Times = incrementsPerDay*(maxDays/4)*(0:4)+1;
 figure(WindowStyle="normal")
 n=0;
 for j=1:3

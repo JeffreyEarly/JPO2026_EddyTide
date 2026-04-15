@@ -102,10 +102,10 @@ for i=1:length(ax)
     vlines(t_phaseIII/86400,'1D:')
     text(5,-1.85,['(' char(real('a')+i-1) ')'],'color',0.7*[1 1 1])
     if i == 4
-        cmocean('tempo')
+        WVDiagnostics.cmocean('tempo')
     
     elseif i == 5
-        cmocean('dense')
+        WVDiagnostics.cmocean('dense')
     else
         colormap(sequentialcolormap)
     end

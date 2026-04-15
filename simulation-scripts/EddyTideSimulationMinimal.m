@@ -23,6 +23,12 @@
 % which is implemented discretely as `taperJ = wvt.FMatrix * taper`. The
 % initialized tide uses `Ap(k_j,0,j) = A a_j`, with `A` chosen so that the
 % resulting maximum horizontal velocity equals `u0_wave`.
+%
+% To run:
+% /Applications/MATLAB_R2025b.app/bin/matlab -nojvm -nodisplay -nosplash
+% > mpmAddRepository("OceanKit","/Users/jearly/Documents/OceanKitRepositories")
+% > mpminstall("WaveVortexModel")
+% > EddyTideSimulationMinimal
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
@@ -33,7 +39,7 @@
 Nxy = 256;
 lat = 45;
 
-isForced = true;
+isForced = false;
 maxT = 600*86400; % integration time, inertial periods
 u0_wave = 0.05;
 
@@ -50,7 +56,8 @@ L_sd = (2*pi/k_sd(1));
 Lxy = 4*L_sd;
 Nz = WVStratification.verticalResolutionForHorizontalResolution(Lxy,Lz,Nxy,N2=N2,latitude=lat);
 
-wvt = WVTransformHydrostatic([Lxy, Lxy, Lz],[Nxy, Nxy, Nz], N2=N2,latitude=lat);
+% wvt = WVTransformConstantStratification([Lxy, Lxy, Lz],[Nxy, Nxy, Nz], N0=N0, latitude=lat);
+wvt = WVTransformBoussinesq([Lxy, Lxy, Lz],[Nxy, Nxy, Nz], N2=@(z) N0*N0*ones(size(z)),latitude=lat);
 
 wvt.addForcing(WVAdaptiveDamping(wvt));
 svv = wvt.forcingWithName("adaptive damping");
@@ -135,5 +142,5 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 model = WVModel(wvt);
-model.createNetCDFFileForModelOutput(filename,outputInterval=86400,shouldOverwriteExisting=false);
+model.createNetCDFFileForModelOutput(filename,outputInterval=86400/4,shouldOverwriteExisting=false);
 model.integrateToTime(maxT);

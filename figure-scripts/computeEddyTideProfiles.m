@@ -1,5 +1,5 @@
 function EddyTideProfiles = computeEddyTideProfiles(wvd)
-loadFigureDefaults;
+% loadFigureDefaults;
 
 [fpath,fname,~] = fileparts(wvd.wvpath);
 if ~isempty(fpath)
@@ -13,14 +13,14 @@ try
 catch
     wvt = wvd.wvt;
     t = wvd.t_wv;
-    [hkeg,hkew,vkew,shsg,shsw,svsw,Zg,Yg,peg,pew] = vzeros(wvt.Nz,wvt.Nx,length(t));
+    [hkeg,hkew,vkew,shsg,shsw,svsw,Zg,Yg,peg,pew] = deal(zeros(wvt.Nz,wvt.Nx,length(t)));
 
     integrationLastInformWallTime = datetime('now');
     loopStartTime = integrationLastInformWallTime;
     integrationLastInformLoopNumber = 1;
     integrationInformTime = 10;
     timeIndices = 1:length(t);
-    fprintf("Starting loop to compute reservoir fluxes for %d time indices.\n",length(timeIndices));
+    fprintf("Starting loop to compute profiles for %d time indices.\n",length(timeIndices));
 
     for timeIndex=1:length(t)
         deltaWallTime = datetime('now')-integrationLastInformWallTime;
