@@ -1,25 +1,24 @@
-% datadir should point to the folder where the model output file is, the
-% diagnostics file, and the EddyTideProfiles.mat
-% datadir = "../data/";
-% datadir = "/Users/jearly/Dropbox/Shared/Luna-Keshav-Jonathan/";
-% datadir = '/Users/cwortham/Documents/research/JeffreyEarly/EddyTideData/';
+[scriptFolder,~,~] = fileparts(mfilename("fullpath"));
+repoRoot = fileparts(scriptFolder);
+datadir = fullfile(repoRoot,"model-output");
+if ~exist("figureSimulationType","var")
+    figureSimulationType = "Unforced";
+end
 
-%% Forced
-% simul_type = "Forced";
-% datadir = '/Users/lunahiron/Documents/Projects/EddyWave/data/forced/';
-% wvtfilepath = fullfile(datadir,"bottom-generated-tide-forced-const-N-5cms.nc");
-% 
-% figureFolder = "./figures-forced";
-% maxDays = 500;
-%% Unforced
-simul_type = "Forced";
-simul_type = "Unforced"; % This flag changes the axis scaling, etc.
-datadir = '/Users/jearly/Documents/OceanKitRepositories/JPO2026_EddyTide/model-output';
-wvtfilepath = fullfile(datadir,"bottom-generated-tide-unforced-const-N-5cms-wave-10cms-eddy.nc");
-
-figureFolder = "./figures-unforced";
+simul_type = figureSimulationType; % This flag changes the axis scaling, etc.
+if figureSimulationType == "Forced"
+    wvtfilepath = fullfile(datadir,"bottom-generated-tide-forced-const-N-5cms-wave-10cms-eddy.nc");
+elseif figureSimulationType == "Unforced"
+    wvtfilepath = fullfile(datadir,"bottom-generated-tide-unforced-const-N-5cms-wave-10cms-eddy.nc");
+else
+    error("JPO2026:InvalidFigureSimulationType","figureSimulationType must be ""Forced"" or ""Unforced"".")
+end
 maxDays = 600;
-%%
+clear figureSimulationType
+
+if ~exist("figureFolder","var")
+    figureFolder = fullfile(repoRoot,"figures-unforced");
+end
 
 if ~(exist("wvd","var") && wvd.wvpath == wvtfilepath)
     wvd = WVDiagnostics(wvtfilepath);
@@ -60,4 +59,3 @@ elseif strcmp(colorscheme,'vic')
     lowcontourcolor = 'w';
     highcontourcolor = 'k';
 end
-

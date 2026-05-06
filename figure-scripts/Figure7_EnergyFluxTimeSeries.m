@@ -56,8 +56,7 @@ gem12_modified = [0.4660    0.6740    0.1880
                   0.4940    0.1840    0.5560 
                   0.7       0.7       0.7];
 
-% flux_filter = @(v) movmean(v,21);
-flux_filter = @(v) vfilt(v,21);
+flux_filter = @(v) movmean(v,21);
 
 fig = figure(WindowStyle="normal");
 tl = tiledlayout(3,1,TileSpacing="compact");
@@ -98,9 +97,8 @@ end
 for i=1:3
     nexttile(tl,i)
     xlim([0 maxDays]),ylim(ylim_simul),yticks(-1:.2:1)
-    % linestyle thick
-    vlines(t_phaseII/86400,'1D:')
-    vlines(t_phaseIII/86400,'1D:')
+    xline(t_phaseII/86400,":",Color=0.7*[1 1 1],LineWidth=1)
+    xline(t_phaseIII/86400,":",Color=0.7*[1 1 1],LineWidth=1)
     if i == 1
         hleg=legend('d/dt','ggg-cascade','ggw-cascade','ggw-transfer','wwg-transfer','damping',...
             'Location','northwest','NumColumns',2);
@@ -121,7 +119,6 @@ for i=1:3
     text(maxDays-30,ylim_simul(2)-0.05,['(' char(real('a')+i-1) ')'])
 end
 
-% fontsize 10 10 10 10
 set(fig,'Units','inches')
 set(fig,'Position',[1 1 5 5])
 exportgraphics(tl,figureFolder + "/" + "Figure7_FluxTimeSeries.png",Resolution=300)

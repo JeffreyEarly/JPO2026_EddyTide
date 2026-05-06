@@ -56,7 +56,8 @@ for n = 1:N
     val = log10(TE_Apm_j_kR);
     val(val==-inf) = energy_limits(1);
 
-    jpcolor(flipud(radialWavelength),wvd.wvt.j,fliplr(val)), xlog, flipx, hold on
+    centeredPcolor(flipud(radialWavelength),wvd.wvt.j,fliplr(val)); hold on
+    set(gca,XScale="log",XDir="reverse")
     xlim([min(radialWavelength) max(radialWavelength)]), ylim([-0.5 18.5]), yticks(0:2:18), clim(energy_limits)
    
     contour(radialWavelength,wvd.wvt.j',omegaJK,[v(1) v(1)],'k','LineWidth',0.5)
@@ -76,7 +77,7 @@ for n = 1:N
     end
     %text(10^2.95,17.25,['(' char(real('a')+(n-1)) ')'])
     axis square
-    noxlabels
+    xticklabels([])
     colormap(sequentialcolormap)
     title(['T = ' num2str(round(t(options.iTime{n}))) ' days'])
     %geostrophic energy spectrum
@@ -84,7 +85,8 @@ for n = 1:N
     val = log10(TE_A0_j_kR);
     val(val==-inf) = energy_limits(1); 
 
-    jpcolor(flipud(radialWavelength),wvd.wvt.j,fliplr(val)), xlog, flipx
+    centeredPcolor(flipud(radialWavelength),wvd.wvt.j,fliplr(val));
+    set(gca,XScale="log",XDir="reverse")
     xlim([min(radialWavelength) max(radialWavelength)]), ylim([-0.5 18.5])
     yticks(0:2:18),xticks([10^1 10^2 10^3])
     clim(energy_limits)

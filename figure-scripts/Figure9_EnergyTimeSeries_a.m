@@ -1,5 +1,6 @@
 %MakeEnergyTimeSeries
 
+figureSimulationType = "Forced";
 loadFigureDefaults;
 
 [t_phaseII, t_phaseIII] = computePhaseBoundaries(wvd);
@@ -16,7 +17,9 @@ totalEnergy_ape = ke + ape;
 clear ugz vgz wgz
 
 EddyTideProfiles = computeEddyTideProfiles(wvd);
-use EddyTideProfiles;
+shsg = EddyTideProfiles.shsg;
+shsw = EddyTideProfiles.shsw;
+svsw = EddyTideProfiles.svsw;
 shear_g = squeeze(mean(shsg,[1 2]));
 shear_w = squeeze(mean(shsw+svsw,[1 2]));
 shear_t = shear_g + shear_w;
@@ -38,9 +41,9 @@ ylabel('Normalized Energy')
 
 xlabel('Time (days)')
 
-xlim([0 maxDays])%,linestyle thick
-h = vlines(t_phaseII/86400,'1D:'); h.Annotation.LegendInformation.IconDisplayStyle = 'off';
-h = vlines(t_phaseIII/86400,'1D:'); h.Annotation.LegendInformation.IconDisplayStyle = 'off';
+xlim([0 maxDays])
+h = xline(t_phaseII/86400,":",Color=0.7*[1 1 1],LineWidth=1); h.Annotation.LegendInformation.IconDisplayStyle = 'off';
+h = xline(t_phaseIII/86400,":",Color=0.7*[1 1 1],LineWidth=1); h.Annotation.LegendInformation.IconDisplayStyle = 'off';
 
 text(t(1)+(t_phaseII/86400-t(1))/2,1.1,'Phase I','color',0.7*[1 1 1])
 text((t_phaseII+(t_phaseIII-t_phaseII)/4)/86400,1.1,'Phase II','color',0.7*[1 1 1])
