@@ -8,7 +8,7 @@ After you clone this repository, you will need to install the [WaveVortexModel](
 
 You must first install the [OceanKit](https://github.com/JeffreyEarly/OceanKit) package manager repository, then install the exact package versions used for this paper:
 
-- `WaveVortexModel` version `4.0.5`
+- `WaveVortexModel` version `4.0.6`
 - `WaveVortexModelDiagnostics` version `1.0.6`
 
 ### 1. Package Manager Repository installation
@@ -33,7 +33,7 @@ mpmRemoveRepository("OceanKit")
 Install the pinned model and diagnostics packages:
 
 ```matlab
-mpminstall(matlab.mpm.PackageSpecifier("WaveVortexModel", VersionRange="4.0.5"))
+mpminstall(matlab.mpm.PackageSpecifier("WaveVortexModel", VersionRange="4.0.6"))
 mpminstall(matlab.mpm.PackageSpecifier("WaveVortexModelDiagnostics", VersionRange="1.0.6"))
 ```
 
@@ -73,7 +73,7 @@ catch
 end
 mpmAddRepository("OceanKit", oceanKitPath)
 
-mpminstall(matlab.mpm.PackageSpecifier("WaveVortexModel", VersionRange="4.0.5"), Prompt=false)
+mpminstall(matlab.mpm.PackageSpecifier("WaveVortexModel", VersionRange="4.0.6"), Prompt=false)
 mpminstall(matlab.mpm.PackageSpecifier("WaveVortexModelDiagnostics", VersionRange="1.0.6"), Prompt=false)
 savepath
 
