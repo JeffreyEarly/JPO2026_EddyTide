@@ -19,7 +19,7 @@ tl = tiledlayout(fig,2,3,'TileSpacing','compact','Padding','compact');
 yAxisLabel = "vertical mode";
 vDLTW = 10^(-3.9);
 jmax=Inf;
-kmax=(2*pi/9e3);
+kmax=min(2*pi/9e3,max(wvd.kRadial(:)));
 quiverScaleGGG=40;
 quiverScaleGGW=10*quiverScaleGGG;
 

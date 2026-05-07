@@ -1,6 +1,9 @@
 [scriptFolder,~,~] = fileparts(mfilename("fullpath"));
 repoRoot = fileparts(scriptFolder);
-datadir = fullfile(repoRoot,"model-output");
+if ~exist("figureDataDir","var")
+    figureDataDir = fullfile(repoRoot,"model-output");
+end
+datadir = figureDataDir;
 if ~exist("figureSimulationType","var")
     figureSimulationType = "Unforced";
 end

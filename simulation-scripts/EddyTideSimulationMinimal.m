@@ -1,6 +1,7 @@
-%% Minimal Eddy Bottom Tide Simulation
+function [model,wvt,filename] = EddyTideSimulationMinimal(options)
+% Run the minimal constant-stratification eddy-tide simulation.
 %
-% This script is a minimal, constant-stratification version of
+% EddyTideSimulationMinimal is a minimal, constant-stratification version of
 % `EddyTideSimulation.m`. The forced and unforced runs start from the same
 % `A0`, `Ap`, and `Am` coefficients; the forced case only adds
 % `WVFixedAmplitudeForcing` during time stepping.
@@ -10,7 +11,7 @@
 % $$\omega_{M2} = \frac{2\pi}{T_{M2}}.$$
 %
 % For each baroclinic mode $$j \ge 1$$ with an undamped `l = 0`
-% coefficient, the script selects the single spectral mode $$(k_j,0,j)$$
+% coefficient, the function selects the single spectral mode $$(k_j,0,j)$$
 % that minimizes
 %
 % $$\left| \Omega(k,0,j) - \omega_{M2} \right|.$$
@@ -24,11 +25,45 @@
 % initialized tide uses `Ap(k_j,0,j) = A a_j`, with `A` chosen so that the
 % resulting maximum horizontal velocity equals `u0_wave`.
 %
-% To run:
-% /Applications/MATLAB_R2025b.app/bin/matlab -nojvm -nodisplay -nosplash
-% > mpmAddRepository("OceanKit","/Users/jearly/Documents/OceanKitRepositories")
-% > mpminstall("WaveVortexModel")
-% > EddyTideSimulationMinimal
+% To run an unforced manuscript-resolution reproducibility simulation:
+%
+% ```matlab
+% EddyTideSimulationMinimal(Nxy=256)
+% ```
+%
+% To run the matching forced simulation:
+%
+% ```matlab
+% EddyTideSimulationMinimal(Nxy=256,isForced=true)
+% ```
+%
+% - Declaration: [model,wvt,filename] = EddyTideSimulationMinimal(options)
+% - Parameter Nxy: horizontal grid resolution, default `256`
+% - Parameter latitude: latitude in degrees, default `45`
+% - Parameter isForced: whether to apply fixed-amplitude M2 forcing, default `false`
+% - Parameter maxT: final integration time in seconds, default `600*86400`
+% - Parameter u0Wave: initial maximum wave velocity in m/s, default `0.05`
+% - Parameter outputInterval: NetCDF output interval in seconds, default `86400/4`
+% - Parameter shouldOverwriteExisting: whether to overwrite existing output, default `true`
+% - Parameter outputDirectory: output folder, default repository `model-output`
+% - Returns model: integrated `WVModel`
+% - Returns wvt: initialized `WVTransformConstantStratification`
+% - Returns filename: generated NetCDF output filename
+arguments (Input)
+    options.Nxy (1,1) double {mustBeInteger,mustBePositive} = 256
+    options.latitude (1,1) double {mustBeFinite} = 45
+    options.isForced (1,1) logical = false
+    options.maxT (1,1) double {mustBePositive} = 600*86400
+    options.u0Wave (1,1) double {mustBePositive} = 0.05
+    options.outputInterval (1,1) double {mustBePositive} = 86400/4
+    options.shouldOverwriteExisting (1,1) logical = false
+    options.outputDirectory (1,1) string = defaultOutputDirectory()
+end
+arguments (Output)
+    model WVModel
+    wvt WVTransformConstantStratification
+    filename string
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
@@ -36,12 +71,18 @@
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-Nxy = 256;
-lat = 45;
+Nxy = options.Nxy;
+lat = options.latitude;
+isForced = options.isForced;
+maxT = options.maxT;
+u0_wave = options.u0Wave;
+outputInterval = options.outputInterval;
+shouldOverwriteExisting = options.shouldOverwriteExisting;
+outputDirectory = options.outputDirectory;
 
-isForced = false;
-maxT = 600*86400; % integration time, inertial periods
-u0_wave = 0.05;
+if ~isfolder(outputDirectory)
+    mkdir(outputDirectory)
+end
 
 N0 = sqrt(2e-5);
 Lz = 2000;
@@ -56,8 +97,8 @@ L_sd = (2*pi/k_sd(1));
 Lxy = 4*L_sd;
 Nz = WVStratification.verticalResolutionForHorizontalResolution(Lxy,Lz,Nxy,N2=N2,latitude=lat);
 
-% wvt = WVTransformConstantStratification([Lxy, Lxy, Lz],[Nxy, Nxy, Nz], N0=N0, latitude=lat);
-wvt = WVTransformBoussinesq([Lxy, Lxy, Lz],[Nxy, Nxy, Nz], N2=@(z) N0*N0*ones(size(z)),latitude=lat);
+wvt = WVTransformConstantStratification([Lxy, Lxy, Lz],[Nxy, Nxy, Nz], N0=N0, latitude=lat);
+% wvt = WVTransformBoussinesq([Lxy, Lxy, Lz],[Nxy, Nxy, Nz], N2=@(z) N0*N0*ones(size(z)),latitude=lat);
 
 wvt.addForcing(WVAdaptiveDamping(wvt));
 svv = wvt.forcingWithName("adaptive damping");
@@ -136,11 +177,19 @@ if isForced
 else
     filename = sprintf("bottom-generated-tide-unforced-const-N-%dcms-wave-%dcms-eddy.nc",round(100*u0_wave),round(100*U));
 end
+filename = fullfile(outputDirectory,filename);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Initialize the model
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 model = WVModel(wvt);
-model.createNetCDFFileForModelOutput(filename,outputInterval=86400/4,shouldOverwriteExisting=false);
+model.createNetCDFFileForModelOutput(filename,outputInterval=outputInterval,shouldOverwriteExisting=shouldOverwriteExisting);
 model.integrateToTime(maxT);
+
+end
+
+function outputDirectory = defaultOutputDirectory()
+[scriptFolder,~,~] = fileparts(mfilename("fullpath"));
+outputDirectory = string(fullfile(fileparts(scriptFolder),"model-output"));
+end
