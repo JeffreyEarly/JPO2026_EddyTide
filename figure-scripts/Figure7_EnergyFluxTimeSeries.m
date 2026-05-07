@@ -68,6 +68,7 @@ for iFlux=1:length(inertial_flux)
 end
 ylim([-1 1])
 xticklabels([])
+box on
 
 nexttile(tl);
 plot(t_diff/86400,flux_filter(dKE_g)/wvd.flux_scale,LineWidth=6,Color=0.2*[1 1 1]), hold on
@@ -77,6 +78,7 @@ for iFlux=1:length(inertial_flux)
 end
 ylim([-0.2 1])
 xticklabels([])
+box on
 
 nexttile(tl);
 plot(t_diff/86400,flux_filter(dPE_g)/wvd.flux_scale,LineWidth=6,Color=0.2*[1 1 1]), hold on
@@ -85,6 +87,7 @@ for iFlux=1:length(inertial_flux)
     plot(wvd.t_diag/86400,flux_filter(inertial_flux(iFlux).pe_g)/wvd.flux_scale,'Color',gem12_modified(iFlux,:),LineWidth=2)
 end
 ylim([-1 0.2])
+box on
 
 %%
 
