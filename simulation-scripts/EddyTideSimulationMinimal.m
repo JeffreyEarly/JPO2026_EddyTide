@@ -1,10 +1,10 @@
 function [model,wvt,filename] = EddyTideSimulationMinimal(options)
-% Run the minimal constant-stratification eddy-tide simulation.
+% Run the minimal eddy-tide simulation.
 %
-% EddyTideSimulationMinimal is a minimal, constant-stratification version of
-% `EddyTideSimulation.m`. The forced and unforced runs start from the same
-% `A0`, `Ap`, and `Am` coefficients; the forced case only adds
-% `WVFixedAmplitudeForcing` during time stepping.
+% EddyTideSimulationMinimal is a minimal version of `EddyTideSimulation.m`.
+% The forced and unforced runs start from the same `A0`, `Ap`, and `Am`
+% coefficients; the forced case only adds `WVFixedAmplitudeForcing` during
+% time stepping.
 %
 % The wave-forcing is from the discrete semidiurnal spectrum. Let
 %
@@ -44,7 +44,7 @@ function [model,wvt,filename] = EddyTideSimulationMinimal(options)
 % - Parameter maxT: final integration time in seconds, default `600*86400`
 % - Parameter u0Wave: initial maximum wave velocity in m/s, default `0.05`
 % - Parameter outputInterval: NetCDF output interval in seconds, default `86400/4`
-% - Parameter shouldOverwriteExisting: whether to overwrite existing output, default `true`
+% - Parameter shouldOverwriteExisting: whether to overwrite existing output, default `false`
 % - Parameter outputDirectory: output folder, default repository `model-output`
 % - Returns model: integrated `WVModel`
 % - Returns wvt: initialized `WVTransformConstantStratification`
@@ -96,9 +96,7 @@ im = InternalModesWKBSpectral(N2=N2,zIn=[-Lz 0],latitude=lat);
 L_sd = (2*pi/k_sd(1));
 Lxy = 4*L_sd;
 Nz = WVStratification.verticalResolutionForHorizontalResolution(Lxy,Lz,Nxy,N2=N2,latitude=lat);
-
 wvt = WVTransformConstantStratification([Lxy, Lxy, Lz],[Nxy, Nxy, Nz], N0=N0, latitude=lat);
-% wvt = WVTransformBoussinesq([Lxy, Lxy, Lz],[Nxy, Nxy, Nz], N2=@(z) N0*N0*ones(size(z)),latitude=lat);
 
 wvt.addForcing(WVAdaptiveDamping(wvt));
 svv = wvt.forcingWithName("adaptive damping");

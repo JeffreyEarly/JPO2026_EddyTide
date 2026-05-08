@@ -49,16 +49,7 @@ set(groot,'defaultLegendInterpreter','latex')
 set(groot,'defaultLineLineWidth',1.5)
 set(groot,'defaultScatterMarkerFaceColor','k')
 set(groot,'defaultScatterMarkerEdgeColor','white')
-colorscheme = 'broc';
-% colorscheme = 'vic';
-if strcmp(colorscheme,'broc')
-    divergingcolormap = WVDiagnostics.crameri('broc');
-    sequentialcolormap = flipud(WVDiagnostics.crameri('davos'));
-    lowcontourcolor = 'k';
-    highcontourcolor = 'w';
-elseif strcmp(colorscheme,'vic')
-    divergingcolormap = WVDiagnostics.crameri('vik');
-    sequentialcolormap = WVDiagnostics.crameri('lapaz');
-    lowcontourcolor = 'w';
-    highcontourcolor = 'k';
-end
+divergingcolormap = WVDiagnostics.crameri('broc');
+sequentialcolormap = flipud(WVDiagnostics.crameri('davos'));
+lowcontourcolor = 'k';
+highcontourcolor = 'w';
