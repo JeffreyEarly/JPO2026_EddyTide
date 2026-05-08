@@ -3,7 +3,6 @@
 figure-comparison/
 figures-unforced/
 model-output/
-reproducibility-output*/
 *.nc
 *.png
 *.asv
