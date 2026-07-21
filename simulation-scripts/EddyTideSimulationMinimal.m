@@ -58,6 +58,7 @@ arguments (Input)
     options.outputInterval (1,1) double {mustBePositive} = 86400/4
     options.shouldOverwriteExisting (1,1) logical = false
     options.outputDirectory (1,1) string = defaultOutputDirectory()
+    options.tideBeamShiftFraction = 0.0
 end
 arguments (Output)
     model WVModel
@@ -135,6 +136,7 @@ for iJ=1:max(wvt.j)
 end
 
 wvt.Ap = u0_wave*wvt.Ap/wvt.uvMax; % renormalize the total amplitude we want
+wvt.Ap = wvt.Ap .* exp(-1i*wvt.K*(options.tideBeamShiftFraction*L_sd));
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
@@ -168,12 +170,12 @@ wvt.A0(wvt.Kh > svv.k_damp) = 0;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 if isForced
-    filename = sprintf("bottom-generated-tide-forced-const-N-%dcms-wave-%dcms-eddy.nc",round(100*u0_wave),round(100*U));
+    filename = sprintf("bottom-generated-tide-forced-const-N-%dcms-wave-%dcms-eddy-shift-%d.nc",round(100*u0_wave),round(100*U),round(100*options.tideBeamShiftFraction));
     force = WVFixedAmplitudeForcing(wvt,name="M2-tidal-forcing");
     force.setWaveForcingCoefficients(wvt.Ap,wvt.Am);
     wvt.addForcing(force);
 else
-    filename = sprintf("bottom-generated-tide-unforced-const-N-%dcms-wave-%dcms-eddy.nc",round(100*u0_wave),round(100*U));
+    filename = sprintf("bottom-generated-tide-unforced-const-N-%dcms-wave-%dcms-eddy-shift-%d.nc",round(100*u0_wave),round(100*U),round(100*options.tideBeamShiftFraction));
 end
 filename = fullfile(outputDirectory,filename);
 
