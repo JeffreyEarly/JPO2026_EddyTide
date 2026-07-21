@@ -5,8 +5,8 @@
 %
 % The domain is constructed to be similar to Shakespeare (2023)
 
-addpath(genpath("/Users/jearly/Documents/ProjectRepositories/GLOceanKit-forcing-modules/Matlab"));
-addpath(genpath("/Users/jearly/Documents/ProjectRepositories/chebfun"));
+% addpath(genpath("/Users/jearly/Documents/ProjectRepositories/GLOceanKit-forcing-modules/Matlab"));
+% addpath(genpath("/Users/jearly/Documents/ProjectRepositories/chebfun"));
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
@@ -22,6 +22,7 @@ isConstantStratification = true;
 shouldAddMoorings = false;
 maxT = 400*86400; % integration time, inertial periods
 u0_wave = 0.05;
+tideBeamShiftFraction = 0.25; % positive shifts toward +x
 
 if isConstantStratification
     strat_type = "const";
@@ -134,6 +135,7 @@ A = u0_wave/wvt.uvMax; % renormalize the total amplitude we want
 for iJ=1:max(wvt.j)
     wvt.Ap( maskApSD ==1 & wvt.J == iJ) = A*taperJ(iJ);
 end
+wvt.Ap = wvt.Ap .* exp(-1i*wvt.K*(tideBeamShiftFraction*L_sd));
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
