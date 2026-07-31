@@ -25,7 +25,7 @@ wave mode, with extra plots before starting the simulation.
 
 ## Pseudo-topographic generation
 
-`EddyTidePseudoTopographicSimulationMinimal` starts without an initialized wave beam and instead generates M2 waves from a prescribed zonal barotropic current over deterministic Goff abyssal hills. This optional experiment currently requires the local WaveVortexModel 4.2.0 authoring checkout; the manuscript reproduction environment remains pinned to WaveVortexModel 4.0.7 until 4.2.0 is released through OceanKit.
+`EddyTidePseudoTopographicSimulationMinimal` starts without an initialized wave beam and instead generates M2 waves from a prescribed zonal barotropic current over deterministic Goff abyssal hills. This optional experiment requires WaveVortexModel 4.2.0, which is available through OceanKit. The manuscript reproduction environment remains pinned to WaveVortexModel 4.0.7.
 
 The default calculation uses `Nxy=128`, four mode-one M2 wavelengths, a 20 km terrain cutoff, and the moderate forcing regime:
 
@@ -66,3 +66,24 @@ EddyTidePseudoTopographicSimulationMinimal(Nxy=256,Lxy=500e3,minimumTopographicW
 ```
 
 Use `includeEddy=false` for the matched control. Existing output is restored and extended unless `shouldOverwriteExisting=true` is supplied. The simulation driver does not create diagnostics or manuscript figures.
+
+## Provisional pseudo-topographic figures
+
+The provisional quicklook reads the model output directly and requires only WaveVortexModel. The model writer must be closed before analysis; `EddyTidePseudoTopographicSimulationMinimal` closes it before returning.
+
+```matlab
+[~,~,modelFile] = EddyTidePseudoTopographicSimulationMinimal(maxT=25*86400);
+[figures,summary] = EddyTidePseudoTopographicQuicklook(modelFile);
+```
+
+This produces state and spectral figures at the final saved time by default. Select another saved record with `iTime` and suppress file export with `shouldExport=false`.
+
+The energy-history figure additionally requires WaveVortexModelDiagnostics 1.0.7 or newer:
+
+```matlab
+[figureHandle,energy,diagnosticsFile] = EddyTidePseudoTopographicEnergyDiagnostics(modelFile);
+```
+
+Missing diagnostics are created at full saved cadence and stale diagnostics are extended by default. The plotted wave reservoir is the combined internal-gravity-wave and inertial-oscillation energy, $$E_w+E_{io}$$; geostrophic energy is split into kinetic and potential parts. Energies are shown in absolute SI units without normalization. Set `shouldUpdateDiagnostics=false` to require an already-current diagnostics file.
+
+Both functions analyze one simulation per call. Call them separately for the initial-eddy and control outputs. Their PNGs are provisional analysis products and are not used by the manuscript figure workflow.
