@@ -76,7 +76,7 @@ Use `includeEddy=false` for the matched control. Existing output is restored and
 ./simulation-scripts/run-pseudo-topographic-suite.sh status
 ```
 
-Model files remain in `model-output`, so the existing matching Hiron moderate-eddy calculation is restored and extended rather than recomputed. Logs, manifests, state markers, and campaign-control files are stored under `model-output/suites/pseudo-topographic-Nxy128-day600-lmin20km`; the enabled-case set is persisted there. Per-model locks live under `model-output/.pseudo-topographic-locks`. Every model receives its own provisional quicklook. Once all enabled integrations and quicklooks finish, energy analyses run one at a time so they do not compete with simulations for memory or disk bandwidth.
+Model files remain in `model-output`, so the existing matching Hiron moderate-eddy calculation is restored and extended rather than recomputed. Logs, manifests, state markers, and campaign-control files are stored under `model-output/suites/pseudo-topographic-Nxy128-day600-lmin20km`; the enabled-case set is persisted there. Per-model locks live under `model-output/.pseudo-topographic-locks`. Every model receives its own provisional quicklook. Integrations retain scheduling priority. Once all enabled integrations and quicklooks finish, independent energy analyses run concurrently up to the same global worker limit.
 
 Select a subset when starting a campaign:
 

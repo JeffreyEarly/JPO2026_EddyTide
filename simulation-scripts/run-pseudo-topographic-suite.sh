@@ -29,7 +29,7 @@ Scientific selection options for start:
 Configuration options:
   --nxy N                                    Horizontal resolution (default: 128)
   --target-day DAY                           Final model day (default: 600)
-  --max-workers N                            Concurrent simulation workers (default: 3)
+  --max-workers N                            Concurrent simulation or analysis workers (default: 3)
   --minimum-topographic-wavelength-km KM    Terrain cutoff (default: 20)
   --output-directory PATH                    Model output root (default: repository model-output)
   --matlab-command PATH                      MATLAB executable (default: matlab)
@@ -573,11 +573,13 @@ manage_action() {
                 launch_job "$case_id"
                 active_workers=$((active_workers + 1))
             done < "$ENABLED_CASES_PATH"
-        elif [[ "$active_workers" -eq 0 ]]; then
+        else
             while IFS= read -r job_id; do
+                (( active_workers >= MAX_WORKERS )) && break
                 [[ -z "$job_id" || -f "$SUITE_ROOT/analysis/$job_id/analysis-complete.txt" ]] && continue
+                session_is_running "$(worker_session_name "$job_id")" && continue
                 launch_job "$job_id"
-                break
+                active_workers=$((active_workers + 1))
             done < <(required_analysis_jobs)
         fi
         sleep 5
