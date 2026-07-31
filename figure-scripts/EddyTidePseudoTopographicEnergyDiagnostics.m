@@ -2,10 +2,14 @@ function [figureHandle,energy,diagnosticsFile] = EddyTidePseudoTopographicEnergy
 % Plot wave and geostrophic energy using WaveVortexModelDiagnostics.
 %
 % Missing diagnostics are created and stale diagnostics are extended by
-% default. Wave energy uses `EnergyReservoir.wave`, which is the combined
-% internal-gravity-wave and inertial-oscillation reservoir
-% $$E_{\mathrm{wave}}=E_w+E_{io}$$. Energies are plotted in absolute SI
-% units without normalization. The simulation writer must be closed before
+% default. The figure follows the normalized-energy panel of manuscript
+% Figure 4: total quadratic energy, internal-gravity-wave energy,
+% geostrophic energy, geostrophic kinetic energy, and geostrophic potential
+% energy are normalized by the initial total quadratic energy. The returned
+% `energy.wave` remains the combined internal-gravity-wave and
+% inertial-oscillation reservoir $$E_w+E_{io}$$. A second panel shows the
+% domain-maximum horizontal wave speed at every saved model time, regardless
+% of the diagnostics stride. The simulation writer must be closed before
 % calling this function.
 %
 % ```matlab
@@ -24,8 +28,8 @@ function [figureHandle,energy,diagnosticsFile] = EddyTidePseudoTopographicEnergy
 % - Parameter options.exportPrefix: export filename prefix, default model filename
 % - Parameter options.exportResolution: PNG resolution in dots per inch
 % - Parameter options.shouldOverwriteExisting: whether an existing PNG file may be replaced
-% - Returns figureHandle: two-panel energy figure
-% - Returns energy: time, plotted reservoirs, quadratic total, and exact total energy
+% - Returns figureHandle: normalized energy-evolution figure
+% - Returns energy: time, raw and normalized reservoirs, quadratic total, and exact total energy
 % - Returns diagnosticsFile: diagnostics NetCDF path
 arguments (Input)
     modelFile (1,1) string {mustBeFile}
@@ -62,10 +66,12 @@ diagnosticsFile = string(diagnostics.diagpath);
 validatePseudoTopographicForcing(diagnostics.wvt)
 updateDiagnostics(diagnostics,options.diagnosticsStride,options.shouldUpdateDiagnostics)
 
-reservoirNames = [EnergyReservoir.wave EnergyReservoir.geostrophic ...
-    EnergyReservoir.geostrophic_kinetic EnergyReservoir.geostrophic_potential EnergyReservoir.total];
+reservoirNames = [EnergyReservoir.igw EnergyReservoir.io EnergyReservoir.wave ...
+    EnergyReservoir.geostrophic EnergyReservoir.geostrophic_kinetic ...
+    EnergyReservoir.geostrophic_potential EnergyReservoir.total];
 [reservoirs,time] = diagnostics.quadraticEnergyOverTime(energyReservoirs=reservoirNames);
 [exactTotal,exactTime] = diagnostics.exactEnergyOverTime;
+[waveSpeedTime,maximumHorizontalWaveSpeed] = maximumHorizontalWaveSpeedOverTime(diagnostics);
 time = reshape(time,[],1);
 exactTime = reshape(exactTime,[],1);
 if ~isequal(time,exactTime)
@@ -75,12 +81,18 @@ if isempty(time) || time(end) ~= diagnostics.t_wv(end)
     error("EddyTidePseudoTopographicEnergyDiagnostics:StaleDiagnostics", "Diagnostics must extend through the final model-output time.")
 end
 
-energy = struct(time=time,timeDays=time/86400,wave=reshape(reservoirs(1).energy,[],1), ...
-    geostrophic=reshape(reservoirs(2).energy,[],1), ...
-    geostrophicKinetic=reshape(reservoirs(3).energy,[],1), ...
-    geostrophicPotential=reshape(reservoirs(4).energy,[],1), ...
-    quadraticTotal=reshape(reservoirs(5).energy,[],1),exactTotal=reshape(exactTotal,[],1), ...
-    units="m^3 s^{-2}",waveDefinition="E_w + E_io",figurePath="");
+energy = struct(time=time,timeDays=time/86400,internalGravityWave=reshape(reservoirs(1).energy,[],1), ...
+    inertialOscillation=reshape(reservoirs(2).energy,[],1),wave=reshape(reservoirs(3).energy,[],1), ...
+    geostrophic=reshape(reservoirs(4).energy,[],1), ...
+    geostrophicKinetic=reshape(reservoirs(5).energy,[],1), ...
+    geostrophicPotential=reshape(reservoirs(6).energy,[],1), ...
+    quadraticTotal=reshape(reservoirs(7).energy,[],1),exactTotal=reshape(exactTotal,[],1), ...
+    units="m^3 s^{-2}",waveDefinition="E_w + E_io",internalGravityWaveDefinition="E_w", ...
+    normalizationDefinition="initial quadratic total energy",waveSpeedTime=waveSpeedTime, ...
+    waveSpeedTimeDays=waveSpeedTime/86400,maximumHorizontalWaveSpeed=maximumHorizontalWaveSpeed, ...
+    waveSpeedUnits="m s^-1",figurePath="");
+energy.normalization = energy.quadraticTotal(1);
+energy.normalized = normalizedEnergy(energy);
 validateEnergy(energy)
 
 figureHandle = createEnergyFigure(energy,options.figureVisible);
@@ -162,53 +174,116 @@ end
 
 function validateEnergy(energy)
 numberOfTimes = numel(energy.time);
-series = [energy.wave energy.geostrophic energy.geostrophicKinetic ...
-    energy.geostrophicPotential energy.quadraticTotal energy.exactTotal];
+series = [energy.internalGravityWave energy.inertialOscillation energy.wave ...
+    energy.geostrophic energy.geostrophicKinetic energy.geostrophicPotential ...
+    energy.quadraticTotal energy.exactTotal];
 if size(series,1) ~= numberOfTimes || any(~isfinite([energy.time; series(:)]))
     error("EddyTidePseudoTopographicEnergyDiagnostics:NonfiniteEnergy", "All energy series must match the time axis and contain finite values.")
 end
 if any(diff(energy.time) <= 0)
     error("EddyTidePseudoTopographicEnergyDiagnostics:InvalidSavedTimes", "Diagnostics times must be strictly increasing.")
 end
+if ~isfinite(energy.normalization) || energy.normalization <= 0
+    error("EddyTidePseudoTopographicEnergyDiagnostics:InvalidNormalization", "The initial total quadratic energy must be finite and positive.")
+end
 tolerance = 100*eps(max(1,max(abs(energy.geostrophic))));
 if any(abs(energy.geostrophic-energy.geostrophicKinetic-energy.geostrophicPotential) > tolerance)
     error("EddyTidePseudoTopographicEnergyDiagnostics:GeostrophicPartitionMismatch", "Geostrophic energy must equal geostrophic kinetic plus geostrophic potential energy.")
 end
+waveTolerance = 100*eps(max(1,max(abs(energy.wave))));
+if any(abs(energy.wave-energy.internalGravityWave-energy.inertialOscillation) > waveTolerance)
+    error("EddyTidePseudoTopographicEnergyDiagnostics:WavePartitionMismatch", "Combined wave energy must equal internal-gravity-wave plus inertial-oscillation energy.")
+end
+normalizedSeries = [energy.normalized.quadraticTotal energy.normalized.internalGravityWave ...
+    energy.normalized.geostrophic energy.normalized.geostrophicKinetic ...
+    energy.normalized.geostrophicPotential];
+if any(~isfinite(normalizedSeries),"all") || abs(energy.normalized.quadraticTotal(1)-1) > 100*eps
+    error("EddyTidePseudoTopographicEnergyDiagnostics:InvalidNormalizedEnergy", "Normalized energy series must be finite and the initial normalized total must equal one.")
+end
+if numel(energy.waveSpeedTime) ~= numel(energy.maximumHorizontalWaveSpeed) || ...
+        isempty(energy.waveSpeedTime) || any(~isfinite([energy.waveSpeedTime; energy.maximumHorizontalWaveSpeed]))
+    error("EddyTidePseudoTopographicEnergyDiagnostics:InvalidWaveSpeed", "The wave-speed history must match the model time axis and contain finite values.")
+end
+if any(diff(energy.waveSpeedTime) <= 0) || any(energy.maximumHorizontalWaveSpeed < 0)
+    error("EddyTidePseudoTopographicEnergyDiagnostics:InvalidWaveSpeed", "Wave-speed times must increase strictly and maximum speeds must be nonnegative.")
+end
+if energy.waveSpeedTime(1) ~= energy.time(1) || energy.waveSpeedTime(end) ~= energy.time(end)
+    error("EddyTidePseudoTopographicEnergyDiagnostics:WaveSpeedTimeMismatch", "Wave-speed and energy histories must have identical start and end times.")
+end
+end
+
+function [time,maximumHorizontalWaveSpeed] = maximumHorizontalWaveSpeedOverTime(diagnostics)
+time = reshape(diagnostics.t_wv,[],1);
+if isempty(time) || any(~isfinite(time)) || any(diff(time) <= 0)
+    error("EddyTidePseudoTopographicEnergyDiagnostics:InvalidModelTimes", "Saved model times must be finite and strictly increasing.")
+end
+
+originalTimeIndex = diagnostics.iTime;
+timeCleanup = onCleanup(@()restoreDiagnosticsTimeIndex(diagnostics,originalTimeIndex));
+maximumHorizontalWaveSpeed = zeros(size(time));
+for iTime = 1:numel(time)
+    diagnostics.iTime = iTime;
+    wvt = diagnostics.wvt;
+    waveU = wvt.transformToSpatialDomainWithF(Apm=wvt.UAp.*wvt.Apt+wvt.UAm.*wvt.Amt);
+    waveV = wvt.transformToSpatialDomainWithF(Apm=wvt.VAp.*wvt.Apt+wvt.VAm.*wvt.Amt);
+    maximumHorizontalWaveSpeed(iTime) = max(hypot(waveU,waveV),[],"all");
+end
+diagnostics.iTime = originalTimeIndex;
+clear timeCleanup
+end
+
+function restoreDiagnosticsTimeIndex(diagnostics,iTime)
+diagnostics.iTime = iTime;
+end
+
+function normalized = normalizedEnergy(energy)
+normalization = energy.quadraticTotal(1);
+normalized = struct(quadraticTotal=energy.quadraticTotal/normalization, ...
+    internalGravityWave=energy.internalGravityWave/normalization, ...
+    geostrophic=energy.geostrophic/normalization, ...
+    geostrophicKinetic=energy.geostrophicKinetic/normalization, ...
+    geostrophicPotential=energy.geostrophicPotential/normalization);
 end
 
 function figureHandle = createEnergyFigure(energy,visibility)
-figureHandle = figure(Name="Pseudo-topographic energy diagnostics",Color="w",Visible=visibility,Position=[100 100 1000 780]);
+figureHandle = figure(Name="Pseudo-topographic energy diagnostics",Color="w",Visible=visibility,Position=[100 100 900 850]);
 layout = tiledlayout(figureHandle,2,1,TileSpacing="compact",Padding="compact");
-
-axesHandle = nexttile(layout,1);
-if any([energy.wave; energy.geostrophic] > 0)
-    plotFunction = @semilogy;
-    panelTitle = "Wave and geostrophic reservoirs (log scale)";
-else
-    plotFunction = @plot;
-    panelTitle = "Wave and geostrophic reservoirs";
+energyAxes = nexttile(layout,1);
+colors = [0 0.4470 0.7410; 0.8500 0.3250 0.0980; 0.9290 0.6940 0.1250; 0.4940 0.1840 0.5560; 0.4660 0.6740 0.1880];
+series = [energy.normalized.quadraticTotal energy.normalized.internalGravityWave ...
+    energy.normalized.geostrophic energy.normalized.geostrophicKinetic ...
+    energy.normalized.geostrophicPotential];
+lineHandles = plot(energyAxes,energy.timeDays,series,LineWidth=2);
+for iLine = 1:numel(lineHandles)
+    lineHandles(iLine).Color = colors(iLine,:);
 end
-plotFunction(axesHandle,energy.timeDays,energy.wave,LineWidth=2,DisplayName="wave, E_w + E_{io}")
-hold(axesHandle,"on")
-plotFunction(axesHandle,energy.timeDays,energy.geostrophic,LineWidth=2,DisplayName="geostrophic, E_g")
-grid(axesHandle,"on")
-xlim(axesHandle,timeLimits(energy.timeDays))
-ylabel(axesHandle,"energy (m^3 s^{-2})")
-title(axesHandle,panelTitle)
-legend(axesHandle,Location="best")
+xlim(energyAxes,timeLimits(energy.timeDays))
+ylim(energyAxes,normalizedEnergyLimits(series))
+ylabel(energyAxes,"Normalized Energy")
+energyAxes.XTickLabel = [];
+legend(energyAxes,lineHandles,{"Total Energy $\mathcal{E}$","Wave Energy $\mathcal{E}_w$", ...
+    "Geostrophic Energy $\mathcal{E}_g$","Geostrophic Kinetic $\mathcal{K}_g$", ...
+    "Geostrophic Potential $\mathcal{P}_g$"},Location="northwest",NumColumns=2,Interpreter="latex")
 
-axesHandle = nexttile(layout,2);
-plot(axesHandle,energy.timeDays,energy.geostrophicKinetic,LineWidth=2,DisplayName="geostrophic kinetic, KE_g")
-hold(axesHandle,"on")
-plot(axesHandle,energy.timeDays,energy.geostrophicPotential,LineWidth=2,DisplayName="geostrophic potential, PE_g")
-grid(axesHandle,"on")
-xlim(axesHandle,timeLimits(energy.timeDays))
-xlabel(axesHandle,"time (days)")
-ylabel(axesHandle,"energy (m^3 s^{-2})")
-title(axesHandle,"Geostrophic partition")
-legend(axesHandle,Location="best")
+speedAxes = nexttile(layout,2);
+plot(speedAxes,energy.waveSpeedTimeDays,100*energy.maximumHorizontalWaveSpeed,LineWidth=2,Color=colors(1,:))
+xlim(speedAxes,timeLimits(energy.waveSpeedTimeDays))
+ylim(speedAxes,waveSpeedLimits(100*energy.maximumHorizontalWaveSpeed))
+xlabel(speedAxes,"Time (days)")
+ylabel(speedAxes,"maximum horizontal wave speed (cm s^{-1})")
+title(speedAxes,"Domain-maximum horizontal wave velocity")
+linkaxes([energyAxes speedAxes],"x")
+end
 
-title(layout,"Pseudo-topographic energy evolution")
+function limits = normalizedEnergyLimits(series)
+maximumEnergy = max(series,[],"all");
+upperLimit = max(1,ceil(2*1.05*maximumEnergy)/2);
+limits = [0 upperLimit];
+end
+
+function limits = waveSpeedLimits(maximumHorizontalWaveSpeedCentimeters)
+upperLimit = max(1,ceil(1.05*max(maximumHorizontalWaveSpeedCentimeters)));
+limits = [0 upperLimit];
 end
 
 function limits = timeLimits(timeDays)

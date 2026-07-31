@@ -76,7 +76,7 @@ The provisional quicklook reads the model output directly and requires only Wave
 [figures,summary] = EddyTidePseudoTopographicQuicklook(modelFile);
 ```
 
-This produces state and spectral figures at the final saved time by default. Select another saved record with `iTime` and suppress file export with `shouldExport=false`.
+This produces state and spectral figures at the final saved time by default. The state figure includes a midpoint vertical-vorticity section, and the spectral figure shows absolute wave and geostrophic energy with a fixed $$10^{-8}\ \mathrm{m^3\,s^{-2}}$$ plotting floor. Select another saved record with `iTime` and suppress file export with `shouldExport=false`.
 
 The energy-history figure additionally requires WaveVortexModelDiagnostics 1.0.7 or newer:
 
@@ -84,6 +84,6 @@ The energy-history figure additionally requires WaveVortexModelDiagnostics 1.0.7
 [figureHandle,energy,diagnosticsFile] = EddyTidePseudoTopographicEnergyDiagnostics(modelFile);
 ```
 
-Missing diagnostics are created at full saved cadence and stale diagnostics are extended by default. The plotted wave reservoir is the combined internal-gravity-wave and inertial-oscillation energy, $$E_w+E_{io}$$; geostrophic energy is split into kinetic and potential parts. Energies are shown in absolute SI units without normalization. Set `shouldUpdateDiagnostics=false` to require an already-current diagnostics file.
+Missing diagnostics are created at full saved cadence and stale diagnostics are extended by default. The top panel follows the normalized-energy panel of manuscript Figure 4: total quadratic energy, internal-gravity-wave energy $$E_w$$, geostrophic energy, geostrophic kinetic energy, and geostrophic potential energy are normalized by the initial total quadratic energy. The bottom panel shows $$\max_{x,y,z}\sqrt{u_w^2+v_w^2}$$ at every saved model time, independent of the diagnostics stride. Phase boundaries are omitted. The returned `energy.wave` field remains the combined reservoir $$E_w+E_{io}$$, with the internal-wave and inertial components also returned separately. Set `shouldUpdateDiagnostics=false` to require an already-current diagnostics file.
 
 Both functions analyze one simulation per call. Call them separately for the initial-eddy and control outputs. Their PNGs are provisional analysis products and are not used by the manuscript figure workflow.

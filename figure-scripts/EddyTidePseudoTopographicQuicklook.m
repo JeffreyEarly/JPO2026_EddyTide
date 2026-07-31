@@ -2,9 +2,10 @@ function [figureHandles,summary] = EddyTidePseudoTopographicQuicklook(modelFile,
 % Create model-only quicklook figures for a pseudo-topographic simulation.
 %
 % This function reads a saved `WVModel` output file without using
-% WaveVortexModelDiagnostics. It shows the physical state and the wave and
-% geostrophic spectra at one saved time. The simulation writer must be
-% closed before calling this function.
+% WaveVortexModelDiagnostics. It shows the physical state, a midpoint
+% vertical-vorticity section, and absolute wave and geostrophic spectra at
+% one saved time. The simulation writer must be closed before calling this
+% function.
 %
 % ```matlab
 % [figures,summary] = EddyTidePseudoTopographicQuicklook(modelFile);
@@ -115,6 +116,8 @@ geostrophicV = wvt.transformToSpatialDomainWithF(A0=wvt.VA0.*wvt.A0t);
 waveHorizontalSpeed = squeeze(sqrt(waveU(:,:,iSurface).^2+waveV(:,:,iSurface).^2));
 geostrophicVorticity = wvt.diffX(geostrophicV)-wvt.diffY(geostrophicU);
 geostrophicSurfaceVorticityOverF = squeeze(geostrophicVorticity(:,:,iSurface))/abs(wvt.f);
+iYSection = round((wvt.Ny+1)/2);
+verticalVorticityOverF = squeeze(wvt.zeta_z(:,iYSection,:))./wvt.f;
 
 allowedCount = wvt.transformToRadialWavenumber(double(generationMask));
 validCount = wvt.transformToRadialWavenumber(double(generationComponents.waveValidity));
@@ -127,6 +130,9 @@ state = struct(time=time,timeDays=time/86400,iTime=iTime,xKilometers=wvt.x(:)/1e
     waveHorizontalSpeed=waveHorizontalSpeed,geostrophicSurfaceVorticityOverF=geostrophicSurfaceVorticityOverF, ...
     maximumSurfaceHorizontalWaveSpeed=max(waveHorizontalSpeed,[],"all"), ...
     maximumGeostrophicSurfaceVorticityOverF=max(abs(geostrophicSurfaceVorticityOverF),[],"all"), ...
+    zKilometers=wvt.z(:)/1e3,sectionYKilometers=wvt.y(iYSection)/1e3, ...
+    verticalVorticityOverF=verticalVorticityOverF, ...
+    maximumVerticalVorticityOverF=max(abs(verticalVorticityOverF),[],"all"), ...
     generationSupportFraction=generationSupportFraction,verticalMode=wvt.j(:), ...
     radialWavelengthKilometers=2*pi./wvt.kRadial(:).'/1e3);
 end
@@ -161,7 +167,8 @@ end
 
 function validateFiniteState(state,spectra)
 values = [state.topographicHeight(:); state.waveHorizontalSpeed(:); ...
-    state.geostrophicSurfaceVorticityOverF(:); state.generationSupportFraction(:); ...
+    state.geostrophicSurfaceVorticityOverF(:); state.verticalVorticityOverF(:); ...
+    state.generationSupportFraction(:); ...
     spectra.waveRadial(:); spectra.geostrophicRadial(:)];
 if any(~isfinite(values))
     error("EddyTidePseudoTopographicQuicklook:NonfiniteData", "All reconstructed state and spectral values must be finite.")
@@ -174,6 +181,7 @@ end
 function figureHandle = createStateFigure(state,visibility)
 figureHandle = figure(Name="Pseudo-topographic state quicklook",Color="w",Visible=visibility,Position=[100 100 1320 850]);
 layout = tiledlayout(figureHandle,2,2,TileSpacing="compact",Padding="compact");
+vorticityColorLimit = 0.05;
 
 axesHandle = nexttile(layout,1);
 imagesc(axesHandle,state.xKilometers,state.yKilometers,state.topographicHeight.')
@@ -184,22 +192,20 @@ title(axesHandle,"Pseudo-topography h (m)")
 colorbar(axesHandle)
 
 axesHandle = nexttile(layout,2);
-validWavelength = isfinite(state.radialWavelengthKilometers) & state.radialWavelengthKilometers > 0;
-imagesc(axesHandle,state.radialWavelengthKilometers(validWavelength),state.verticalMode,state.generationSupportFraction(:,validWavelength))
-set(axesHandle,XScale="log",XDir="reverse",YDir="normal")
-xlabel(axesHandle,"horizontal wavelength (km)")
-ylabel(axesHandle,"vertical mode")
-title(axesHandle,"Forced fraction of valid modes")
-clim(axesHandle,[0 1])
+imagesc(axesHandle,state.xKilometers,state.zKilometers,state.verticalVorticityOverF.')
+axis(axesHandle,"xy")
+vorticityLimit = state.maximumVerticalVorticityOverF;
+clim(axesHandle,[-vorticityColorLimit vorticityColorLimit])
+colormap(axesHandle,blueWhiteRed(256))
+xlabel(axesHandle,"x (km)")
+ylabel(axesHandle,"z (km)")
+title(axesHandle,sprintf("Total ζ_z/f at y = %.1f km, max |ζ_z/f| = %.2f\n(vertical scale exaggerated)",state.sectionYKilometers,vorticityLimit))
 colorbar(axesHandle)
 
 axesHandle = nexttile(layout,3);
 imagesc(axesHandle,state.xKilometers,state.yKilometers,state.geostrophicSurfaceVorticityOverF.')
 axis(axesHandle,"xy","image")
-vorticityLimit = max(abs(state.geostrophicSurfaceVorticityOverF),[],"all");
-if vorticityLimit > 0
-    clim(axesHandle,[-vorticityLimit vorticityLimit])
-end
+clim(axesHandle,[-vorticityColorLimit vorticityColorLimit])
 colormap(axesHandle,blueWhiteRed(256))
 xlabel(axesHandle,"x (km)")
 ylabel(axesHandle,"y (km)")
@@ -226,50 +232,70 @@ function figureHandle = createSpectrumFigure(spectra,state,visibility)
 figureHandle = figure(Name="Pseudo-topographic spectrum quicklook",Color="w",Visible=visibility,Position=[100 100 1320 850]);
 layout = tiledlayout(figureHandle,2,2,TileSpacing="compact",Padding="compact");
 validWavelength = isfinite(spectra.radialWavelengthKilometers) & spectra.radialWavelengthKilometers > 0;
+spectrumFloor = 1e-8;
+spectralValues = [spectra.waveRadial(:,validWavelength); spectra.geostrophicRadial(:,validWavelength)];
+colorLimits = spectrumLogLimits(spectralValues,spectrumFloor);
+oneDimensionalLimits = spectrumEnergyLimits([spectra.waveHorizontal(:); spectra.geostrophicHorizontal(:); spectra.waveVertical(:); spectra.geostrophicVertical(:)],spectrumFloor);
 
 plotSpectrumMap(nexttile(layout,1),spectra.radialWavelengthKilometers(validWavelength),spectra.verticalMode, ...
-    spectra.waveRadial(:,validWavelength),spectra.waveTotal,"Combined wave energy")
+    spectra.waveRadial(:,validWavelength),colorLimits,"Combined wave energy spectrum")
 plotSpectrumMap(nexttile(layout,2),spectra.radialWavelengthKilometers(validWavelength),spectra.verticalMode, ...
-    spectra.geostrophicRadial(:,validWavelength),spectra.geostrophicTotal,"Geostrophic energy")
+    spectra.geostrophicRadial(:,validWavelength),colorLimits,"Geostrophic energy spectrum")
 
 axesHandle = nexttile(layout,3);
 hasWave = plotPositiveLogLog(axesHandle,spectra.radialWavelengthKilometers(validWavelength),spectra.waveHorizontal(validWavelength),"wave","-");
 hold(axesHandle,"on")
 hasGeostrophic = plotPositiveLogLog(axesHandle,spectra.radialWavelengthKilometers(validWavelength),spectra.geostrophicHorizontal(validWavelength),"geostrophic","--");
-finishOneDimensionalSpectrum(axesHandle,hasWave || hasGeostrophic,"horizontal wavelength (km)","Radial spectrum")
+finishOneDimensionalSpectrum(axesHandle,hasWave || hasGeostrophic,"horizontal wavelength (km)","energy per radial bin (m^3 s^{-2})","Radial spectrum",oneDimensionalLimits)
 set(axesHandle,XDir="reverse")
 
 axesHandle = nexttile(layout,4);
 hasWave = plotPositiveSemilogy(axesHandle,spectra.verticalMode,spectra.waveVertical,"wave","-");
 hold(axesHandle,"on")
 hasGeostrophic = plotPositiveSemilogy(axesHandle,spectra.verticalMode,spectra.geostrophicVertical,"geostrophic","--");
-finishOneDimensionalSpectrum(axesHandle,hasWave || hasGeostrophic,"vertical mode","Vertical-mode spectrum")
+finishOneDimensionalSpectrum(axesHandle,hasWave || hasGeostrophic,"vertical mode","energy per vertical mode (m^3 s^{-2})","Vertical-mode spectrum",oneDimensionalLimits)
 
 title(layout,sprintf("Energy spectra at day %g",state.timeDays))
+colormap(figureHandle,"turbo")
 end
 
-function plotSpectrumMap(axesHandle,wavelength,verticalMode,energy,totalEnergy,panelTitle)
-if totalEnergy > 0
-    logFraction = log10(energy/totalEnergy);
-    finiteValues = logFraction(isfinite(logFraction));
-else
-    logFraction = NaN(size(energy));
-    finiteValues = [];
-end
-if isempty(finiteValues)
+function plotSpectrumMap(axesHandle,wavelength,verticalMode,energy,colorLimits,panelTitle)
+if ~any(energy > 0,"all")
     axis(axesHandle,"off")
     text(axesHandle,0.5,0.5,"No energy in reservoir",HorizontalAlignment="center")
     title(axesHandle,panelTitle)
     return
 end
-surface(axesHandle,wavelength,verticalMode,logFraction,EdgeColor="none")
+logEnergy = log10(max(energy,10^colorLimits(1)));
+surface(axesHandle,wavelength,verticalMode,logEnergy,EdgeColor="none")
 view(axesHandle,2)
 set(axesHandle,XScale="log",XDir="reverse")
-clim(axesHandle,[max(finiteValues)-6 max(finiteValues)])
+clim(axesHandle,colorLimits)
 xlabel(axesHandle,"horizontal wavelength (km)")
 ylabel(axesHandle,"vertical mode")
-title(axesHandle,panelTitle+" fraction")
-colorbar(axesHandle)
+title(axesHandle,panelTitle)
+colorbarHandle = colorbar(axesHandle);
+colorbarHandle.Label.String = "log_{10} energy density (m^3 s^{-2})";
+end
+
+function limits = spectrumLogLimits(energy,spectrumFloor)
+positiveEnergy = energy(isfinite(energy) & energy > 0);
+if isempty(positiveEnergy)
+    limits = [log10(spectrumFloor) 0];
+else
+    upperExponent = max(0,ceil(log10(max(positiveEnergy))));
+    limits = [log10(spectrumFloor) upperExponent];
+end
+end
+
+function limits = spectrumEnergyLimits(energy,spectrumFloor)
+positiveEnergy = energy(isfinite(energy) & energy > 0);
+if isempty(positiveEnergy)
+    upperLimit = 1;
+else
+    upperLimit = 10^max(0,ceil(log10(max(positiveEnergy))));
+end
+limits = [spectrumFloor upperLimit];
 end
 
 function hasData = plotPositiveLogLog(axesHandle,x,y,label,lineStyle)
@@ -288,7 +314,7 @@ if hasData
 end
 end
 
-function finishOneDimensionalSpectrum(axesHandle,hasData,xLabel,panelTitle)
+function finishOneDimensionalSpectrum(axesHandle,hasData,xLabel,yLabel,panelTitle,energyLimits)
 if ~hasData
     axis(axesHandle,"off")
     text(axesHandle,0.5,0.5,"No energy in either reservoir",HorizontalAlignment="center")
@@ -297,7 +323,8 @@ if ~hasData
 end
 grid(axesHandle,"on")
 xlabel(axesHandle,xLabel)
-ylabel(axesHandle,"energy (m^3 s^{-2})")
+ylabel(axesHandle,yLabel)
+ylim(axesHandle,energyLimits)
 title(axesHandle,panelTitle)
 legend(axesHandle,Location="best")
 end
