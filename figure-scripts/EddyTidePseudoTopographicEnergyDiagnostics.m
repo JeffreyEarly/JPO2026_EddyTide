@@ -5,7 +5,8 @@ function [figureHandle,energy,diagnosticsFile] = EddyTidePseudoTopographicEnergy
 % default. The figure follows the normalized-energy panel of manuscript
 % Figure 4: total quadratic energy, internal-gravity-wave energy,
 % geostrophic energy, geostrophic kinetic energy, and geostrophic potential
-% energy are normalized by the initial total quadratic energy. The returned
+% energy are normalized by the initial total quadratic energy. Set
+% `energyScale="absolute"` for a zero-energy control calculation. The returned
 % `energy.wave` remains the combined internal-gravity-wave and
 % inertial-oscillation reservoir $$E_w+E_{io}$$. A second panel shows the
 % domain-maximum horizontal wave speed at every saved model time, regardless
@@ -22,6 +23,7 @@ function [figureHandle,energy,diagnosticsFile] = EddyTidePseudoTopographicEnergy
 % - Parameter options.diagnosticsFile: diagnostics path, default standard companion filename
 % - Parameter options.diagnosticsStride: model-output stride used to create new diagnostics
 % - Parameter options.shouldUpdateDiagnostics: whether missing or stale diagnostics may be created or extended
+% - Parameter options.energyScale: `"normalized"` for Figure-4 scaling or `"absolute"` for SI energy units
 % - Parameter options.figureVisible: figure visibility, `"on"` or `"off"`
 % - Parameter options.shouldExport: whether to export the provisional PNG figure
 % - Parameter options.exportDirectory: export directory, default beside `modelFile`
@@ -36,6 +38,7 @@ arguments (Input)
     options.diagnosticsFile (1,1) string = ""
     options.diagnosticsStride (1,1) double {mustBeInteger,mustBePositive} = 1
     options.shouldUpdateDiagnostics (1,1) logical = true
+    options.energyScale (1,1) string {mustBeMember(options.energyScale,["normalized" "absolute"])} = "normalized"
     options.figureVisible (1,1) string {mustBeMember(options.figureVisible,["on" "off"])} = "on"
     options.shouldExport (1,1) logical = true
     options.exportDirectory (1,1) string = ""
@@ -88,11 +91,16 @@ energy = struct(time=time,timeDays=time/86400,internalGravityWave=reshape(reserv
     geostrophicPotential=reshape(reservoirs(6).energy,[],1), ...
     quadraticTotal=reshape(reservoirs(7).energy,[],1),exactTotal=reshape(exactTotal,[],1), ...
     units="m^3 s^{-2}",waveDefinition="E_w + E_io",internalGravityWaveDefinition="E_w", ...
-    normalizationDefinition="initial quadratic total energy",waveSpeedTime=waveSpeedTime, ...
+    normalizationDefinition="initial quadratic total energy",energyScale=options.energyScale,waveSpeedTime=waveSpeedTime, ...
     waveSpeedTimeDays=waveSpeedTime/86400,maximumHorizontalWaveSpeed=maximumHorizontalWaveSpeed, ...
     waveSpeedUnits="m s^-1",figurePath="");
-energy.normalization = energy.quadraticTotal(1);
-energy.normalized = normalizedEnergy(energy);
+if options.energyScale == "normalized"
+    energy.normalization = energy.quadraticTotal(1);
+    energy.normalized = normalizedEnergy(energy);
+else
+    energy.normalization = NaN;
+    energy.normalized = struct;
+end
 validateEnergy(energy)
 
 figureHandle = createEnergyFigure(energy,options.figureVisible);
@@ -183,9 +191,6 @@ end
 if any(diff(energy.time) <= 0)
     error("EddyTidePseudoTopographicEnergyDiagnostics:InvalidSavedTimes", "Diagnostics times must be strictly increasing.")
 end
-if ~isfinite(energy.normalization) || energy.normalization <= 0
-    error("EddyTidePseudoTopographicEnergyDiagnostics:InvalidNormalization", "The initial total quadratic energy must be finite and positive.")
-end
 tolerance = 100*eps(max(1,max(abs(energy.geostrophic))));
 if any(abs(energy.geostrophic-energy.geostrophicKinetic-energy.geostrophicPotential) > tolerance)
     error("EddyTidePseudoTopographicEnergyDiagnostics:GeostrophicPartitionMismatch", "Geostrophic energy must equal geostrophic kinetic plus geostrophic potential energy.")
@@ -194,11 +199,16 @@ waveTolerance = 100*eps(max(1,max(abs(energy.wave))));
 if any(abs(energy.wave-energy.internalGravityWave-energy.inertialOscillation) > waveTolerance)
     error("EddyTidePseudoTopographicEnergyDiagnostics:WavePartitionMismatch", "Combined wave energy must equal internal-gravity-wave plus inertial-oscillation energy.")
 end
-normalizedSeries = [energy.normalized.quadraticTotal energy.normalized.internalGravityWave ...
-    energy.normalized.geostrophic energy.normalized.geostrophicKinetic ...
-    energy.normalized.geostrophicPotential];
-if any(~isfinite(normalizedSeries),"all") || abs(energy.normalized.quadraticTotal(1)-1) > 100*eps
-    error("EddyTidePseudoTopographicEnergyDiagnostics:InvalidNormalizedEnergy", "Normalized energy series must be finite and the initial normalized total must equal one.")
+if energy.energyScale == "normalized"
+    if ~isfinite(energy.normalization) || energy.normalization <= 0
+        error("EddyTidePseudoTopographicEnergyDiagnostics:InvalidNormalization", "The initial total quadratic energy must be finite and positive.")
+    end
+    normalizedSeries = [energy.normalized.quadraticTotal energy.normalized.internalGravityWave ...
+        energy.normalized.geostrophic energy.normalized.geostrophicKinetic ...
+        energy.normalized.geostrophicPotential];
+    if any(~isfinite(normalizedSeries),"all") || abs(energy.normalized.quadraticTotal(1)-1) > 100*eps
+        error("EddyTidePseudoTopographicEnergyDiagnostics:InvalidNormalizedEnergy", "Normalized energy series must be finite and the initial normalized total must equal one.")
+    end
 end
 if numel(energy.waveSpeedTime) ~= numel(energy.maximumHorizontalWaveSpeed) || ...
         isempty(energy.waveSpeedTime) || any(~isfinite([energy.waveSpeedTime; energy.maximumHorizontalWaveSpeed]))
@@ -250,16 +260,23 @@ figureHandle = figure(Name="Pseudo-topographic energy diagnostics",Color="w",Vis
 layout = tiledlayout(figureHandle,2,1,TileSpacing="compact",Padding="compact");
 energyAxes = nexttile(layout,1);
 colors = [0 0.4470 0.7410; 0.8500 0.3250 0.0980; 0.9290 0.6940 0.1250; 0.4940 0.1840 0.5560; 0.4660 0.6740 0.1880];
-series = [energy.normalized.quadraticTotal energy.normalized.internalGravityWave ...
-    energy.normalized.geostrophic energy.normalized.geostrophicKinetic ...
-    energy.normalized.geostrophicPotential];
+if energy.energyScale == "normalized"
+    series = [energy.normalized.quadraticTotal energy.normalized.internalGravityWave ...
+        energy.normalized.geostrophic energy.normalized.geostrophicKinetic ...
+        energy.normalized.geostrophicPotential];
+    energyLabel = "Normalized Energy";
+else
+    series = [energy.quadraticTotal energy.internalGravityWave energy.geostrophic ...
+        energy.geostrophicKinetic energy.geostrophicPotential];
+    energyLabel = "Energy (m^3 s^{-2})";
+end
 lineHandles = plot(energyAxes,energy.timeDays,series,LineWidth=2);
 for iLine = 1:numel(lineHandles)
     lineHandles(iLine).Color = colors(iLine,:);
 end
 xlim(energyAxes,timeLimits(energy.timeDays))
-ylim(energyAxes,normalizedEnergyLimits(series))
-ylabel(energyAxes,"Normalized Energy")
+ylim(energyAxes,energyLimits(series,energy.energyScale))
+ylabel(energyAxes,energyLabel)
 energyAxes.XTickLabel = [];
 legend(energyAxes,lineHandles,{"Total Energy $\mathcal{E}$","Wave Energy $\mathcal{E}_w$", ...
     "Geostrophic Energy $\mathcal{E}_g$","Geostrophic Kinetic $\mathcal{K}_g$", ...
@@ -275,9 +292,13 @@ title(speedAxes,"Domain-maximum horizontal wave velocity")
 linkaxes([energyAxes speedAxes],"x")
 end
 
-function limits = normalizedEnergyLimits(series)
+function limits = energyLimits(series,energyScale)
 maximumEnergy = max(series,[],"all");
-upperLimit = max(1,ceil(2*1.05*maximumEnergy)/2);
+if energyScale == "normalized"
+    upperLimit = max(1,ceil(2*1.05*maximumEnergy)/2);
+else
+    upperLimit = max(eps,1.05*maximumEnergy);
+end
 limits = [0 upperLimit];
 end
 
