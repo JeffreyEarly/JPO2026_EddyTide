@@ -12,11 +12,14 @@ simul_type = figureSimulationType; % This flag changes the axis scaling, etc.
 if figureSimulationType == "Forced"
     wvtfilepath = fullfile(datadir,"bottom-generated-tide-forced-const-N-5cms-wave-10cms-eddy.nc");
 elseif figureSimulationType == "Unforced"
-    wvtfilepath = fullfile(datadir,"bottom-generated-tide-unforced-const-N-5cms-wave-10cms-eddy.nc");
+    wvtfilepath = fullfile(datadir,"bottom-generated-tide-unforced-const-N-5cms-wave-10cms-eddy-shift-50.nc");
 else
     error("JPO2026:InvalidFigureSimulationType","figureSimulationType must be ""Forced"" or ""Unforced"".")
 end
 maxDays = 600;
+if figureSimulationType == "Unforced"
+    maxDays = 1200;
+end
 clear figureSimulationType
 
 if ~exist("figureFolder","var")

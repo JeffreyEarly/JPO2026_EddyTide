@@ -37,6 +37,9 @@ function [model,wvt,filename] = EddyTideSimulationMinimal(options)
 % EddyTideSimulationMinimal(Nxy=256,isForced=true)
 % ```
 %
+% When the target output already exists and `shouldOverwriteExisting` is
+% false, the model restarts from its last saved state and appends output.
+%
 % - Declaration: [model,wvt,filename] = EddyTideSimulationMinimal(options)
 % - Parameter Nxy: horizontal grid resolution, default `256`
 % - Parameter latitude: latitude in degrees, default `45`
@@ -44,7 +47,7 @@ function [model,wvt,filename] = EddyTideSimulationMinimal(options)
 % - Parameter maxT: final integration time in seconds, default `600*86400`
 % - Parameter u0Wave: initial maximum wave velocity in m/s, default `0.05`
 % - Parameter outputInterval: NetCDF output interval in seconds, default `86400/4`
-% - Parameter shouldOverwriteExisting: whether to overwrite existing output, default `false`
+% - Parameter shouldOverwriteExisting: overwrite existing output instead of restarting it, default `false`
 % - Parameter outputDirectory: output folder, default repository `model-output`
 % - Returns model: integrated `WVModel`
 % - Returns wvt: initialized `WVTransformConstantStratification`
@@ -183,8 +186,13 @@ filename = fullfile(outputDirectory,filename);
 %% Initialize the model
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-model = WVModel(wvt);
-model.createNetCDFFileForModelOutput(filename,outputInterval=outputInterval,shouldOverwriteExisting=shouldOverwriteExisting);
+if isfile(filename) && ~shouldOverwriteExisting
+    model = WVModel.modelFromFile(filename);
+    wvt = model.wvt;
+else
+    model = WVModel(wvt);
+    model.createNetCDFFileForModelOutput(filename,outputInterval=outputInterval,shouldOverwriteExisting=shouldOverwriteExisting);
+end
 model.integrateToTime(maxT);
 
 end
