@@ -12,12 +12,13 @@ arguments (Input)
     options.outputDirectory (1,1) string = defaultOutputDirectory()
 end
 arguments (Output)
-    diagnosticsFiles (2,1) string
+    diagnosticsFiles (3,1) string
 end
 
 simulationFiles = [
     "bottom-generated-tide-unforced-const-N-5cms-wave-10cms-eddy.nc"
     "bottom-generated-tide-forced-const-N-5cms-wave-10cms-eddy.nc"
+    "bottom-generated-tide-unforced-const-N-5cms-wave-10cms-eddy-shift-50.nc"
 ];
 diagnosticsFiles = strings(size(simulationFiles));
 

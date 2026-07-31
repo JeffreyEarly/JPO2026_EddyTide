@@ -1,4 +1,11 @@
 function [t_phaseII, t_phaseIII] = computePhaseBoundaries(wvd)
+if endsWith(wvd.wvpath,"bottom-generated-tide-unforced-const-N-5cms-wave-10cms-eddy-shift-50.nc")
+    % Use the control-run boundaries for a like-for-like phase comparison.
+    t_phaseII = 289.125 * 86400;
+    t_phaseIII = 465.375 * 86400;
+    return
+end
+
 [PE_g,E_mda] = wvd.diagfile.readVariables('PE_g','E_mda');
 PE_g = PE_g + E_mda;
 
