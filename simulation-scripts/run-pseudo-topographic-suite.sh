@@ -28,7 +28,8 @@ Scientific selection options for start:
 
 Configuration options:
   --nxy N                                    Horizontal resolution (default: 128)
-  --target-day DAY                           Final model day (default: 600)
+  --target-day DAY                           Strong/moderate final day (default: 600)
+  --weak-target-day DAY                      Weak-forcing final day (default: 800)
   --max-workers N                            Concurrent simulation or analysis workers (default: 3)
   --minimum-topographic-wavelength-km KM    Terrain cutoff (default: 20)
   --output-directory PATH                    Model output root (default: repository model-output)
@@ -56,6 +57,7 @@ is_positive_integer() {
 parse_options() {
     NXY=128
     TARGET_DAY=600
+    WEAK_TARGET_DAY=800
     MAX_WORKERS=3
     MINIMUM_TOPOGRAPHIC_WAVELENGTH_KM=20
     OUTPUT_DIRECTORY="$DEFAULT_OUTPUT_DIRECTORY"
@@ -91,6 +93,11 @@ parse_options() {
                 TARGET_DAY=$2
                 shift 2
                 ;;
+            --weak-target-day)
+                [[ $# -ge 2 ]] || fail "--weak-target-day requires a value"
+                WEAK_TARGET_DAY=$2
+                shift 2
+                ;;
             --max-workers)
                 [[ $# -ge 2 ]] || fail "--max-workers requires a value"
                 MAX_WORKERS=$2
@@ -123,6 +130,7 @@ parse_options() {
 
     is_positive_integer "$NXY" || fail "Nxy must be a positive integer"
     is_positive_number "$TARGET_DAY" || fail "target day must be positive"
+    is_positive_number "$WEAK_TARGET_DAY" || fail "weak target day must be positive"
     is_positive_integer "$MAX_WORKERS" || fail "max workers must be a positive integer"
     is_positive_number "$MINIMUM_TOPOGRAPHIC_WAVELENGTH_KM" || fail "minimum topographic wavelength must be positive"
     [[ "$SELECTED_SUITE" == all || "$SELECTED_SUITE" == hiron || "$SELECTED_SUITE" == shakespeare ]] || fail "suite must be all, hiron, or shakespeare"
@@ -133,8 +141,13 @@ parse_options() {
     fi
 
     local target_token=${TARGET_DAY//./p}
+    local weak_target_token=${WEAK_TARGET_DAY//./p}
     local wavelength_token=${MINIMUM_TOPOGRAPHIC_WAVELENGTH_KM//./p}
-    CAMPAIGN_NAME="pseudo-topographic-Nxy${NXY}-day${target_token}-lmin${wavelength_token}km"
+    if [[ "$WEAK_TARGET_DAY" == "$TARGET_DAY" ]]; then
+        CAMPAIGN_NAME="pseudo-topographic-Nxy${NXY}-day${target_token}-lmin${wavelength_token}km"
+    else
+        CAMPAIGN_NAME="pseudo-topographic-Nxy${NXY}-day${target_token}-weakday${weak_target_token}-lmin${wavelength_token}km"
+    fi
     SUITE_ROOT="$OUTPUT_DIRECTORY/suites/$CAMPAIGN_NAME"
     SUITE_HASH=$(printf '%s' "$SUITE_ROOT" | cksum | awk '{print $1}')
     ENABLED_CASES_PATH="$SUITE_ROOT/enabled-cases.txt"
@@ -147,6 +160,7 @@ write_config() {
     {
         printf 'NXY=%q\n' "$NXY"
         printf 'TARGET_DAY=%q\n' "$TARGET_DAY"
+        printf 'WEAK_TARGET_DAY=%q\n' "$WEAK_TARGET_DAY"
         printf 'MAX_WORKERS=%q\n' "$MAX_WORKERS"
         printf 'MINIMUM_TOPOGRAPHIC_WAVELENGTH_KM=%q\n' "$MINIMUM_TOPOGRAPHIC_WAVELENGTH_KM"
         printf 'OUTPUT_DIRECTORY=%q\n' "$OUTPUT_DIRECTORY"
@@ -163,8 +177,10 @@ write_config() {
 load_config() {
     local requested_root=$1
     [[ -f "$requested_root/campaign-config.env" ]] || fail "campaign configuration not found at $requested_root/campaign-config.env"
+    unset WEAK_TARGET_DAY
     # shellcheck source=/dev/null
     source "$requested_root/campaign-config.env"
+    WEAK_TARGET_DAY=${WEAK_TARGET_DAY:-$TARGET_DAY}
 }
 
 initialize_or_validate_config() {
@@ -172,10 +188,10 @@ initialize_or_validate_config() {
         write_config
         return
     fi
-    local requested_nxy=$NXY requested_day=$TARGET_DAY requested_wavelength=$MINIMUM_TOPOGRAPHIC_WAVELENGTH_KM
+    local requested_nxy=$NXY requested_day=$TARGET_DAY requested_weak_day=$WEAK_TARGET_DAY requested_wavelength=$MINIMUM_TOPOGRAPHIC_WAVELENGTH_KM
     local requested_output=$OUTPUT_DIRECTORY requested_workers=$MAX_WORKERS requested_matlab=$MATLAB_COMMAND
     load_config "$SUITE_ROOT"
-    [[ "$NXY" == "$requested_nxy" && "$TARGET_DAY" == "$requested_day" && "$MINIMUM_TOPOGRAPHIC_WAVELENGTH_KM" == "$requested_wavelength" && "$OUTPUT_DIRECTORY" == "$requested_output" ]] || fail "existing campaign scientific configuration does not match the requested options"
+    [[ "$NXY" == "$requested_nxy" && "$TARGET_DAY" == "$requested_day" && "$WEAK_TARGET_DAY" == "$requested_weak_day" && "$MINIMUM_TOPOGRAPHIC_WAVELENGTH_KM" == "$requested_wavelength" && "$OUTPUT_DIRECTORY" == "$requested_output" ]] || fail "existing campaign scientific configuration does not match the requested options"
     MAX_WORKERS=$requested_workers
     MATLAB_COMMAND=$requested_matlab
     write_config
@@ -184,6 +200,15 @@ initialize_or_validate_config() {
 case_is_enabled() {
     local case_id=$1
     [[ -f "$ENABLED_CASES_PATH" ]] && grep -Fxq "$case_id" "$ENABLED_CASES_PATH"
+}
+
+target_day_for_job() {
+    local job_id=$1
+    if [[ "$job_id" == *-weak || "$job_id" == *-weak-* ]]; then
+        printf '%s' "$WEAK_TARGET_DAY"
+    else
+        printf '%s' "$TARGET_DAY"
+    fi
 }
 
 case_matches_selection() {
@@ -212,6 +237,8 @@ merge_enabled_cases() {
     enabled_case_ids=$(paste -sd, "$ENABLED_CASES_PATH")
     write_text_marker "$SUITE_ROOT/campaign-manifest.txt" \
         "campaign=$CAMPAIGN_NAME" \
+        "standard_target_day=$TARGET_DAY" \
+        "weak_target_day=$WEAK_TARGET_DAY" \
         "enabled_cases=$(number_of_enabled_cases)" \
         "enabled_case_ids=$enabled_case_ids" \
         "updated_at=$(date -Iseconds)" \
@@ -324,6 +351,7 @@ start_action() {
         printf 'All enabled campaign work is already complete: %s\n' "$SUITE_ROOT"
         return
     fi
+    archive_marker "$SUITE_ROOT/campaign-complete.txt"
     start_manager
 }
 
@@ -357,14 +385,14 @@ case_status() {
     fi
     case_directory="$SUITE_ROOT/cases/$case_id"
     session_name=$(worker_session_name "$case_id")
-    if [[ -f "$case_directory/quicklook-complete.txt" ]]; then
+    if case_is_complete "$case_id"; then
         printf 'complete'
     elif [[ -f "$case_directory/failed.txt" ]]; then
         printf 'failed'
     elif session_is_running "$session_name"; then
         stage=$(marker_value "$case_directory/stage.txt" stage 2>/dev/null || true)
         [[ "$stage" == quicklook ]] && printf 'quicklook' || printf 'running'
-    elif [[ -f "$case_directory/simulation-complete.txt" ]]; then
+    elif simulation_is_complete "$case_id"; then
         printf 'simulation-complete'
     else
         printf 'queued'
@@ -393,7 +421,7 @@ analysis_status() {
     fi
     directory="$SUITE_ROOT/analysis/$job_id"
     session_name=$(worker_session_name "$job_id")
-    if [[ -f "$directory/analysis-complete.txt" ]]; then
+    if analysis_is_complete "$job_id"; then
         printf 'complete'
     elif [[ -f "$directory/failed.txt" ]]; then
         printf 'failed'
@@ -410,11 +438,44 @@ marker_value() {
     sed -n "s/^${key}=//p" "$path" | tail -n 1
 }
 
+marker_matches_target() {
+    local path=$1 key=$2 job_id=$3 marker_target expected_target
+    marker_target=$(marker_value "$path" "$key" 2>/dev/null || true)
+    expected_target=$(target_day_for_job "$job_id")
+    [[ -n "$marker_target" && "$marker_target" == "$expected_target" ]]
+}
+
+simulation_is_complete() {
+    local case_id=$1 marker_path="$SUITE_ROOT/cases/$1/simulation-complete.txt"
+    marker_matches_target "$marker_path" final_day "$case_id"
+}
+
+case_is_complete() {
+    local case_id=$1 quicklook_path="$SUITE_ROOT/cases/$1/quicklook-complete.txt" quicklook_target
+    simulation_is_complete "$case_id" || return 1
+    [[ -f "$quicklook_path" ]] || return 1
+    quicklook_target=$(marker_value "$quicklook_path" target_day 2>/dev/null || true)
+    [[ -z "$quicklook_target" || "$quicklook_target" == "$(target_day_for_job "$case_id")" ]]
+}
+
+analysis_is_complete() {
+    local job_id=$1 marker_path="$SUITE_ROOT/analysis/$1/analysis-complete.txt" analysis_target case_id
+    [[ -f "$marker_path" ]] || return 1
+    while IFS= read -r case_id; do
+        simulation_is_complete "$case_id" || return 1
+    done < <(lock_ids_for_job "$job_id")
+    analysis_target=$(marker_value "$marker_path" target_day 2>/dev/null || true)
+    if [[ -n "$analysis_target" ]]; then
+        [[ "$analysis_target" == "$(target_day_for_job "$job_id")" ]]
+        return
+    fi
+}
+
 status_action() {
     load_config "$SUITE_ROOT"
     printf 'Campaign: %s\n' "$CAMPAIGN_NAME"
     printf 'Root: %s\n' "$SUITE_ROOT"
-    printf 'Configuration: Nxy=%s, target day=%s, max workers=%s, terrain cutoff=%s km\n' "$NXY" "$TARGET_DAY" "$MAX_WORKERS" "$MINIMUM_TOPOGRAPHIC_WAVELENGTH_KM"
+    printf 'Configuration: Nxy=%s, standard target day=%s, weak target day=%s, max workers=%s, terrain cutoff=%s km\n' "$NXY" "$TARGET_DAY" "$WEAK_TARGET_DAY" "$MAX_WORKERS" "$MINIMUM_TOPOGRAPHIC_WAVELENGTH_KM"
     printf 'Enabled cases: %s of 12\n' "$(number_of_enabled_cases)"
     printf 'Manager: %s\n' "$(manager_is_running && printf running || printf stopped)"
     printf 'Storage: %s\n' "$(df -h "$OUTPUT_DIRECTORY" | awk 'NR==2 {print $4 " available of " $2}')"
@@ -453,7 +514,7 @@ status_action() {
         printf '\nScheduling is blocked by %s\n' "$SUITE_ROOT/storage-blocked.txt"
     elif [[ -f "$SUITE_ROOT/pause-requested.txt" || -f "$SUITE_ROOT/campaign-paused.txt" ]]; then
         printf '\nScheduling is paused.\n'
-    elif [[ -f "$SUITE_ROOT/campaign-complete.txt" ]]; then
+    elif [[ -f "$SUITE_ROOT/campaign-complete.txt" ]] && campaign_is_complete; then
         printf '\nAll enabled simulations and analyses are complete.\n'
     fi
 }
@@ -461,7 +522,7 @@ status_action() {
 number_of_incomplete_simulations() {
     local count=0 case_id
     while IFS= read -r case_id; do
-        [[ -n "$case_id" && ! -f "$SUITE_ROOT/cases/$case_id/quicklook-complete.txt" ]] && count=$((count + 1))
+        [[ -n "$case_id" ]] && ! case_is_complete "$case_id" && count=$((count + 1))
     done < "$ENABLED_CASES_PATH"
     printf '%d' "$count"
 }
@@ -469,7 +530,7 @@ number_of_incomplete_simulations() {
 number_of_incomplete_analyses() {
     local count=0 job_id
     while IFS= read -r job_id; do
-        [[ -n "$job_id" && ! -f "$SUITE_ROOT/analysis/$job_id/analysis-complete.txt" ]] && count=$((count + 1))
+        [[ -n "$job_id" ]] && ! analysis_is_complete "$job_id" && count=$((count + 1))
     done < <(required_analysis_jobs)
     printf '%d' "$count"
 }
@@ -479,10 +540,13 @@ campaign_is_complete() {
 }
 
 storage_gate() {
-    local incomplete available_kb required_kb
+    local incomplete available_kb required_kb case_id projected_case_days=0
     incomplete=$(number_of_incomplete_simulations)
+    while IFS= read -r case_id; do
+        [[ -n "$case_id" ]] && ! case_is_complete "$case_id" && projected_case_days=$(awk -v total="$projected_case_days" -v days="$(target_day_for_job "$case_id")" 'BEGIN {printf "%.17g",total+days}')
+    done < "$ENABLED_CASES_PATH"
     available_kb=$(df -Pk "$OUTPUT_DIRECTORY" | awk 'NR==2 {print $4}')
-    required_kb=$(awk -v cases="$incomplete" -v nxy="$NXY" -v days="$TARGET_DAY" 'BEGIN { perCaseGiB=4*(nxy/128)^3*(days/600); if (perCaseGiB < 0.25) perCaseGiB=0.25; printf "%.0f", (20+cases*perCaseGiB)*1024*1024 }')
+    required_kb=$(awk -v cases="$incomplete" -v nxy="$NXY" -v caseDays="$projected_case_days" 'BEGIN { projectedGiB=4*(nxy/128)^3*(caseDays/600); if (projectedGiB < 0.25*cases) projectedGiB=0.25*cases; printf "%.0f", (20+projectedGiB)*1024*1024 }')
     if (( available_kb < required_kb )); then
         write_text_marker "$SUITE_ROOT/storage-blocked.txt" "blocked_at=$(date -Iseconds)" "available_kib=$available_kb" "required_kib=$required_kb" "incomplete_cases=$incomplete"
         return 1
@@ -554,7 +618,8 @@ manage_action() {
                 "completed_at=$(date -Iseconds)" \
                 "cases=$(number_of_enabled_cases)" \
                 "analyses=$(required_analysis_jobs | awk 'END {print NR+0}')" \
-                "target_day=$TARGET_DAY"
+                "standard_target_day=$TARGET_DAY" \
+                "weak_target_day=$WEAK_TARGET_DAY"
             printf '[%s] All enabled campaign work completed.\n' "$(date -Iseconds)" >> "$SUITE_ROOT/logs/manager.log"
             return
         fi
@@ -564,7 +629,8 @@ manage_action() {
         if [[ $(number_of_incomplete_simulations) -gt 0 ]]; then
             while IFS= read -r case_id; do
                 (( active_workers >= MAX_WORKERS )) && break
-                [[ -z "$case_id" || -f "$SUITE_ROOT/cases/$case_id/quicklook-complete.txt" ]] && continue
+                [[ -z "$case_id" ]] && continue
+                case_is_complete "$case_id" && continue
                 session_is_running "$(worker_session_name "$case_id")" && continue
                 if ! storage_gate; then
                     printf '[%s] Storage gate blocked new workers.\n' "$(date -Iseconds)" >> "$SUITE_ROOT/logs/manager.log"
@@ -576,7 +642,8 @@ manage_action() {
         else
             while IFS= read -r job_id; do
                 (( active_workers >= MAX_WORKERS )) && break
-                [[ -z "$job_id" || -f "$SUITE_ROOT/analysis/$job_id/analysis-complete.txt" ]] && continue
+                [[ -z "$job_id" ]] && continue
+                analysis_is_complete "$job_id" && continue
                 session_is_running "$(worker_session_name "$job_id")" && continue
                 launch_job "$job_id"
                 active_workers=$((active_workers + 1))
@@ -647,7 +714,7 @@ worker_action() {
     export PSEUDOTOPO_SUITE_ROOT="$SUITE_ROOT"
     export PSEUDOTOPO_OUTPUT_DIRECTORY="$OUTPUT_DIRECTORY"
     export PSEUDOTOPO_NXY="$NXY"
-    export PSEUDOTOPO_TARGET_DAY="$TARGET_DAY"
+    export PSEUDOTOPO_TARGET_DAY="$(target_day_for_job "$job_id")"
     export PSEUDOTOPO_OUTPUT_INTERVAL="$OUTPUT_INTERVAL"
     export PSEUDOTOPO_MINIMUM_TOPOGRAPHIC_WAVELENGTH_KM="$MINIMUM_TOPOGRAPHIC_WAVELENGTH_KM"
     "$MATLAB_COMMAND" -batch "addpath(getenv('PSEUDOTOPO_SCRIPT_DIRECTORY')); EddyTidePseudoTopographicSuiteWorker" >> "$log_path" 2>&1

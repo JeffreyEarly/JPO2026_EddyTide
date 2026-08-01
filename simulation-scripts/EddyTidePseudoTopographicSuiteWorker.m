@@ -81,15 +81,20 @@ stage = "simulation";
 writeStage(caseDirectory,stage)
 try
     simulationMarker = fullfile(caseDirectory,"simulation-complete.txt");
-    if isfile(simulationMarker)
+    quicklookMarker = fullfile(caseDirectory,"quicklook-complete.txt");
+    didRunSimulation = false;
+    if markerMatchesTarget(simulationMarker,"final_day",configuration.targetDay)
         modelFile = markerValue(simulationMarker,"model_file");
         if ~isfile(modelFile)
             error("EddyTidePseudoTopographicSuiteWorker:MissingCompletedModel", "The simulation marker refers to missing model output '%s'.",modelFile)
         end
         fprintf("[%s] Reusing completed simulation %s.\n",localTimestamp(),modelFile)
     else
+        archiveExistingMarker(simulationMarker)
+        archiveExistingMarker(quicklookMarker)
         modelFile = runSimulation(configuration,caseConfiguration);
         validateModelOutput(modelFile,configuration,caseConfiguration)
+        didRunSimulation = true;
         writeMarker(simulationMarker,[
             "case_id="+configuration.jobID
             "model_file="+modelFile
@@ -101,14 +106,16 @@ try
 
     stage = "quicklook";
     writeStage(caseDirectory,stage)
-    quicklookMarker = fullfile(caseDirectory,"quicklook-complete.txt");
-    if ~isfile(quicklookMarker)
+    if didRunSimulation || ~markerMatchesTargetOrLegacy(quicklookMarker,"target_day",configuration.targetDay)
+        archiveExistingMarker(quicklookMarker)
+        exportPrefix = figureExportPrefix(configuration.jobID,configuration.targetDay);
         [figures,quicklook] = EddyTidePseudoTopographicQuicklook(modelFile,iTime=Inf,figureVisible="off", ...
-            shouldExport=true,shouldOverwriteExisting=true);
+            shouldExport=true,exportDirectory=configuration.outputDirectory,exportPrefix=exportPrefix,shouldOverwriteExisting=true);
         close(figures)
         writeMarker(quicklookMarker,[
             "case_id="+configuration.jobID
             "model_file="+modelFile
+            "target_day="+configuration.targetDay
             "quicklook_state="+quicklook.figurePaths(1)
             "quicklook_spectra="+quicklook.figurePaths(2)
             "completed_at="+localTimestamp()
@@ -136,15 +143,16 @@ failurePath = fullfile(analysisDirectory,"failed.txt");
 archiveExistingFailure(failurePath,analysisDirectory)
 writeStage(analysisDirectory,"analysis")
 try
-    modelFile = completedModelFile(configuration.suiteRoot,caseID);
+    modelFile = completedModelFile(configuration,caseID);
     if caseConfiguration.initialCondition == "eddy"
         energyScale = "normalized";
     else
         energyScale = "absolute";
     end
+    exportPrefix = figureExportPrefix(caseID,configuration.targetDay);
     [figureHandle,energy,diagnosticsFile] = EddyTidePseudoTopographicEnergyDiagnostics(modelFile, ...
         diagnosticsStride=4,shouldUpdateDiagnostics=true,energyScale=energyScale,figureVisible="off", ...
-        shouldExport=true,shouldOverwriteExisting=true);
+        shouldExport=true,exportDirectory=configuration.outputDirectory,exportPrefix=exportPrefix,shouldOverwriteExisting=true);
     close(figureHandle)
     validateAnalysisTimes(energy,configuration)
     confirmReadWriteReopen(modelFile)
@@ -153,6 +161,7 @@ try
         "job_id="+configuration.jobID
         "model_file="+modelFile
         "diagnostics_file="+diagnosticsFile
+        "target_day="+configuration.targetDay
         "energy_figure="+energy.figurePath
         "energy_scale="+energyScale
         "completed_at="+localTimestamp()
@@ -182,10 +191,10 @@ failurePath = fullfile(analysisDirectory,"failed.txt");
 archiveExistingFailure(failurePath,analysisDirectory)
 writeStage(analysisDirectory,"analysis")
 try
-    eddyFile = completedModelFile(configuration.suiteRoot,eddyCaseID);
-    controlFile = completedModelFile(configuration.suiteRoot,controlCaseID);
+    eddyFile = completedModelFile(configuration,eddyCaseID);
+    controlFile = completedModelFile(configuration,controlCaseID);
     validateMatchingPair(eddyFile,controlFile,configuration)
-    exportPrefix = "eddy-tide-pseudo-topographic-"+pairID;
+    exportPrefix = "eddy-tide-pseudo-topographic-"+pairID+"-"+dayToken(configuration.targetDay);
     [figureHandle,comparison,diagnosticsFiles] = EddyTidePseudoTopographicEnergyComparison(eddyFile,controlFile, ...
         diagnosticsStride=4,figureVisible="off",shouldExport=true,exportDirectory=configuration.outputDirectory, ...
         exportPrefix=exportPrefix,shouldOverwriteExisting=true);
@@ -202,6 +211,7 @@ try
         "control_file="+controlFile
         "eddy_diagnostics="+diagnosticsFiles.eddy
         "control_diagnostics="+diagnosticsFiles.control
+        "target_day="+configuration.targetDay
         "energy_figure="+comparison.figurePath
         "normalization="+compose("%.17g",comparison.normalization)
         "completed_at="+localTimestamp()
@@ -350,10 +360,10 @@ if energy.time(end) ~= configuration.targetDay*86400 || energy.waveSpeedTime(end
 end
 end
 
-function modelFile = completedModelFile(suiteRoot,caseID)
-markerPath = fullfile(suiteRoot,"cases",caseID,"simulation-complete.txt");
-if ~isfile(markerPath)
-    error("EddyTidePseudoTopographicSuiteWorker:MissingSimulationMarker", "Simulation marker is missing for case '%s'.",caseID)
+function modelFile = completedModelFile(configuration,caseID)
+markerPath = fullfile(configuration.suiteRoot,"cases",caseID,"simulation-complete.txt");
+if ~markerMatchesTarget(markerPath,"final_day",configuration.targetDay)
+    error("EddyTidePseudoTopographicSuiteWorker:MissingSimulationMarker", "A day-%g simulation marker is missing for case '%s'.",configuration.targetDay,caseID)
 end
 modelFile = markerValue(markerPath,"model_file");
 if ~isfile(modelFile)
@@ -524,6 +534,51 @@ if nnz(matches) ~= 1
     error("EddyTidePseudoTopographicSuiteWorker:InvalidMarker", "Marker '%s' must contain exactly one '%s' entry.",markerPath,key)
 end
 value = extractAfter(lines(matches),strlength(prefix));
+end
+
+function tf = markerMatchesTarget(markerPath,key,targetDay)
+tf = false;
+if ~isfile(markerPath)
+    return
+end
+lines = readlines(markerPath);
+prefix = key+"=";
+matches = startsWith(lines,prefix);
+if nnz(matches) ~= 1
+    return
+end
+markerTarget = str2double(extractAfter(lines(matches),strlength(prefix)));
+tf = isfinite(markerTarget) && markerTarget == targetDay;
+end
+
+function tf = markerMatchesTargetOrLegacy(markerPath,key,targetDay)
+if ~isfile(markerPath)
+    tf = false;
+    return
+end
+lines = readlines(markerPath);
+if ~any(startsWith(lines,key+"="))
+    tf = true;
+else
+    tf = markerMatchesTarget(markerPath,key,targetDay);
+end
+end
+
+function prefix = figureExportPrefix(caseID,targetDay)
+prefix = "eddy-tide-pseudo-topographic-"+caseID+"-"+dayToken(targetDay);
+end
+
+function token = dayToken(targetDay)
+token = "day"+replace(compose("%.15g",targetDay),".","p");
+end
+
+function archiveExistingMarker(markerPath)
+if ~isfile(markerPath)
+    return
+end
+[directory,name,extension] = fileparts(markerPath);
+timestamp = string(datetime("now","TimeZone","local","Format","yyyyMMdd-HHmmss"));
+movefile(markerPath,fullfile(directory,name+"-"+timestamp+extension),"f")
 end
 
 function writeMarker(path,lines)

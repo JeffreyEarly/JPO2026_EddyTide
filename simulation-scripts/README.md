@@ -69,14 +69,14 @@ Use `includeEddy=false` for the matched control. Existing output is restored and
 
 ## Concurrent pseudo-topographic suite
 
-`run-pseudo-topographic-suite.sh` manages a restartable 12-case campaign using independent detached MATLAB processes. The Hiron suite uses the four-mode-one-M2-wavelength domain, approximately 749.284 km, and the Shakespeare suite uses a 500 km domain. Each suite combines strong, moderate, and weak forcing with an initial-eddy run and a no-initial-eddy control. The default campaign runs every case to day 600 at `Nxy=128`, retains the 20 km terrain cutoff, and permits three simultaneous simulation workers:
+`run-pseudo-topographic-suite.sh` manages a restartable 12-case campaign using independent detached MATLAB processes. The Hiron suite uses the four-mode-one-M2-wavelength domain, approximately 749.284 km, and the Shakespeare suite uses a 500 km domain. Each suite combines strong, moderate, and weak forcing with an initial-eddy run and a no-initial-eddy control. By default, strong and moderate cases run to day 600 and weak cases run to day 800. The campaign uses `Nxy=128`, retains the 20 km terrain cutoff, and permits three simultaneous workers:
 
 ```sh
 ./simulation-scripts/run-pseudo-topographic-suite.sh start
 ./simulation-scripts/run-pseudo-topographic-suite.sh status
 ```
 
-Model files remain in `model-output`, so the existing matching Hiron moderate-eddy calculation is restored and extended rather than recomputed. Logs, manifests, state markers, and campaign-control files are stored under `model-output/suites/pseudo-topographic-Nxy128-day600-lmin20km`; the enabled-case set is persisted there. Per-model locks live under `model-output/.pseudo-topographic-locks`. Every model receives its own provisional quicklook. Integrations retain scheduling priority. Once all enabled integrations and quicklooks finish, independent energy analyses run concurrently up to the same global worker limit.
+Model files remain in `model-output`, so matching calculations are restored and extended rather than recomputed. Logs, manifests, state markers, and campaign-control files for the default targets are stored under `model-output/suites/pseudo-topographic-Nxy128-day600-weakday800-lmin20km`; the enabled-case set is persisted there. Per-model locks live under `model-output/.pseudo-topographic-locks`. Every model receives its own provisional quicklook. Integrations retain scheduling priority. Once all enabled integrations and quicklooks finish, independent energy analyses run concurrently up to the same global worker limit.
 
 Select a subset when starting a campaign:
 
@@ -94,6 +94,18 @@ The selectors are `--suite all|hiron|shakespeare`, `--initial-condition both|edd
 
 When both members of a suite/forcing pair are enabled, the campaign produces one comparison figure. Its energy panel uses the eddy's initial quadratic total energy as the common normalization, solid lines for the eddy, and dashed lines for the control; its lower panel compares maximum horizontal wave speed. An eddy selected without its control retains the normalized single-run energy figure. A control selected without its eddy uses an absolute-energy, zero-origin figure because the control's initial energy is zero.
 
+`--target-day` sets the strong and moderate target, while `--weak-target-day` sets the weak target. Their defaults are 600 and 800 days. Target days are included in quicklook and energy-figure prefixes, so extending a model does not replace figures from an earlier target. When both target options have the same value, the scheduler preserves the earlier campaign-directory naming convention. For example, inspect the completed all-day-600 campaign with:
+
+```sh
+./simulation-scripts/run-pseudo-topographic-suite.sh status --weak-target-day 600
+```
+
+To extend only the Hiron and Shakespeare weak eddy-control pairs from day 600 to day 800, use:
+
+```sh
+./simulation-scripts/run-pseudo-topographic-suite.sh start --forcing weak
+```
+
 Pause the queue without interrupting active NetCDF writers, then resume incomplete simulations or analysis:
 
 ```sh
@@ -110,7 +122,7 @@ All commands that address an existing suite must use the same scientific options
 ./simulation-scripts/run-pseudo-topographic-suite.sh status --nxy 256 --minimum-topographic-wavelength-km 6
 ```
 
-Additional options set `--target-day`, `--output-directory`, and `--matlab-command`. The scheduler derives all default paths from its own location, checks WaveVortexModel 4.2.0 and WaveVortexModelDiagnostics 1.0.7 before launch, and retains a conservative 20 GiB storage reserve. The full default campaign projects approximately 50 GiB of new model output. Status is grouped by Hiron and Shakespeare and parses active worker logs instead of opening NetCDF files that are in read-write mode.
+Additional options set `--target-day`, `--weak-target-day`, `--output-directory`, and `--matlab-command`. The scheduler derives all default paths from its own location, checks WaveVortexModel 4.2.0 and WaveVortexModelDiagnostics 1.0.7 before launch, and retains a conservative 20 GiB storage reserve. Storage projection uses each enabled case's resolved target. Status is grouped by Hiron and Shakespeare and parses active worker logs instead of opening NetCDF files that are in read-write mode.
 
 ## Provisional pseudo-topographic figures
 
