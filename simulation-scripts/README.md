@@ -144,3 +144,15 @@ The energy-history figure additionally requires WaveVortexModelDiagnostics 1.0.7
 Missing diagnostics are created at full saved cadence and stale diagnostics are extended by default. The top panel follows the normalized-energy panel of manuscript Figure 4: total quadratic energy, internal-gravity-wave energy $$E_w$$, geostrophic energy, geostrophic kinetic energy, and geostrophic potential energy are normalized by the initial total quadratic energy. The bottom panel shows $$\max_{x,y,z}\sqrt{u_w^2+v_w^2}$$ at every saved model time, independent of the diagnostics stride. Phase boundaries are omitted. The returned `energy.wave` field remains the combined reservoir $$E_w+E_{io}$$, with the internal-wave and inertial components also returned separately. Set `shouldUpdateDiagnostics=false` to require an already-current diagnostics file.
 
 Both public functions above analyze one simulation per call. `EddyTidePseudoTopographicEnergyComparison` provides the campaign runner's paired eddy-control energy and wave-speed view with common eddy normalization. Their PNGs are provisional analysis products and are not used by the manuscript figure workflow.
+
+### Hiron-Shakespeare forcing-flux comparison
+
+`EddyTidePseudoTopographicDomainFluxComparison` compares one forcing regime across the Hiron and Shakespeare eddy-control quartets. Pass the Hiron eddy and control first, followed by the matching Shakespeare pair:
+
+```matlab
+[figureHandle,flux,diagnosticsFiles] = EddyTidePseudoTopographicDomainFluxComparison(hironEddyFile,hironControlFile,shakespeareEddyFile,shakespeareControlFile,diagnosticsStride=4);
+```
+
+The temporal panels show exact pseudo-topographic pressure work and adaptive-damping work in absolute, depth-integrated, horizontally averaged units. They are not normalized by the initial eddy energy and are not multiplied by domain area. The spectral panels use the controls over the final 100 days and plot signed generation per logarithmic radial-wavenumber interval, allowing domains with different radial-bin widths to be compared directly. The black curve with white markers marks the M2 resonance locus. Missing or stale diagnostics are updated by default; set `shouldUpdateDiagnostics=false` to require existing current diagnostics.
+
+Call the function separately for strong, moderate, and weak forcing. By default, filenames are inferred from the current amplitude and final model day, producing `strong-domain-flux-comparison-day600`, `moderate-domain-flux-comparison-day600`, and `weak-domain-flux-comparison-day800` products for the completed campaign. This analysis remains manual and is not scheduled by `run-pseudo-topographic-suite.sh`.
