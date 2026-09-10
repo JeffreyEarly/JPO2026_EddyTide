@@ -3,6 +3,7 @@
 figure-comparison/
 figures-unforced/
 model-output/
+.dependencies/
 *.nc
 *.png
 *.asv
