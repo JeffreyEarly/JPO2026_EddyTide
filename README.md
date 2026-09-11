@@ -103,3 +103,29 @@ savepath
 cd(repoRoot)
 MakeAllFigures()
 ```
+
+## Stronger-beam exponential run
+
+The separate 128 × 128 run keeps 28 vertical points (18 retained modes) and initializes a 0.10 m/s tidal beam. It remains unforced and runs to day 600 with the pinned native FFTW executable. Stronger waves test eddy stability; instability is not guaranteed.
+
+Prepare from a fresh MATLAB session (the function selects session-local dependencies without saving the path):
+
+```matlab
+addpath(fullfile(repoRoot,"simulation-scripts"))
+runFolder = fullfile(repoRoot,"model-output/exponential-Nxy128-Nz28-depth4000-wave10cms-shift0");
+PrepareEddyTideExponentialRun(Nxy=128,Nz=28,u0Wave=0.10,outputDirectory=runFolder)
+```
+
+Launch from the repository root with MATLAB available on PATH:
+
+```sh
+python3 simulation-scripts/run-exponential-simulation.py start model-output/exponential-Nxy128-Nz28-depth4000-wave10cms-shift0 --segment-days 50
+python3 simulation-scripts/run-exponential-simulation.py status model-output/exponential-Nxy128-Nz28-depth4000-wave10cms-shift0
+python3 simulation-scripts/run-exponential-simulation.py stop model-output/exponential-Nxy128-Nz28-depth4000-wave10cms-shift0
+```
+
+Omitting `--segment-days` preserves uninterrupted execution. The segmented supervisor holds `.run.lock` throughout native integration and MATLAB monitoring. Each native invocation gets its own request and execution report. A stop request prevents further segments; the current native writer stops gracefully, or an active energy calculation finishes before pausing. Failures pause the sequence for inspection. Once the supervisor exits and releases its lock, repeat the same start command to continue from the last complete checkpoint. Never delete a lock belonging to a live supervisor.
+
+Between segments, `MonitorEddyTideExponentialRun` reads the closed model file and uses `geostrophicKineticEnergy` and `geostrophicPotentialEnergy` for newly saved records. `energy.csv` contains seconds, absolute energies in the model's spectral normalization, and energies divided by their time-zero values. `energy.json` summarizes the latest completed day; `energy.png` plots both normalized histories. `segments.json` records segment timings and report paths; `process.json` provides process status and an estimate of remaining wall time. Monitoring checks ordered six-hour times and reuses existing CSV rows without duplicating them. Status reporting must read these files, not the model NetCDF while integration is active.
+
+At day 600 the supervisor verifies all 2,401 records are readable and produces `surface-vorticity-snapshots.png` at days 0, 150, 300, 450, and 600. Energy changes are indicators to interpret alongside these snapshots. The full diagnostics and figure builders are not invoked. Previous output and manuscript dependency pins remain separate.

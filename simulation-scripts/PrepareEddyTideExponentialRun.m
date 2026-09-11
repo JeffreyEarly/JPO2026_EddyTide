@@ -8,13 +8,15 @@ function [requestPath,modelPath,provenance] = PrepareEddyTideExponentialRun(opti
 %
 % The profile is N2(z) = (3*2*pi/3600)^2 * exp(2*z/1300), on [-4000,0] m.
 % The domain spans four mode-one M2 wavelengths. Vertical resolution follows
-% WVStratification.verticalResolutionForHorizontalResolution.
+% WVStratification.verticalResolutionForHorizontalResolution unless Nz is supplied.
 %
 % Existing output is preserved. A matching prepared run can be extended by
 % supplying a later maxT; mismatched science or execution provenance fails.
 %
 % - Declaration: [requestPath,modelPath,provenance] = PrepareEddyTideExponentialRun(options)
 % - Parameter Nxy: horizontal resolution, default 256
+% - Parameter Nz: optional explicit vertical grid count
+% - Parameter u0Wave: initial wave maximum in m/s, default 0.05
 % - Parameter maxT: final time in seconds, default 600*86400; a multiple of six hours
 % - Parameter outputDirectory: run folder, default model-output/exponential-Nxy256-depth4000-shift0
 % - Parameter modelSource: pinned WaveVortexModel checkout, default repository .dependencies/wave-vortex-model
@@ -23,6 +25,8 @@ function [requestPath,modelPath,provenance] = PrepareEddyTideExponentialRun(opti
 % - Returns provenance: recorded configuration, environment, and initialization measurements
 arguments (Input)
     options.Nxy (1,1) double {mustBeInteger,mustBePositive} = 256
+    options.Nz (1,1) double {mustBeInteger,mustBePositive}
+    options.u0Wave (1,1) double {mustBeFinite,mustBePositive} = 0.05
     options.maxT (1,1) double {mustBeFinite,mustBePositive} = 600*86400
     options.outputDirectory (1,1) string = ""
     options.modelSource (1,1) string = ""
@@ -51,7 +55,8 @@ if mod(options.maxT,outputInterval) ~= 0
     error("JPO2026:FinalTime","maxT must be a multiple of the six-hour output interval.");
 end
 environment = configureEnvironment(workspaceRoot,scriptFolder,options.modelSource);
-configuration = struct("schemaVersion",1,"Nxy",options.Nxy,"Lz",4000,"N0",3*2*pi/3600,"stratificationScale",1300,"latitude",45,"M2Period",12.420602*3600,"domainWavelengths",4,"u0Wave",0.05,"eddySpeed",0.10,"eddyHorizontalScale",80e3,"eddyVerticalScale",300,"beamTaperScale",500,"tideBeamShiftFraction",0,"isForced",false,"outputInterval",outputInterval);
+configuration = struct("schemaVersion",1,"Nxy",options.Nxy,"Lz",4000,"N0",3*2*pi/3600,"stratificationScale",1300,"latitude",45,"M2Period",12.420602*3600,"domainWavelengths",4,"u0Wave",options.u0Wave,"eddySpeed",0.10,"eddyHorizontalScale",80e3,"eddyVerticalScale",300,"beamTaperScale",500,"tideBeamShiftFraction",0,"isForced",false,"outputInterval",outputInterval);
+if isfield(options,"Nz"), configuration.Nz = options.Nz; end
 modelPath = fullfile(outputDirectory,"eddy-tide-exponential.nc");
 requestPath = fullfile(outputDirectory,"run.json");
 provenancePath = fullfile(outputDirectory,"provenance.json");
@@ -69,6 +74,8 @@ if isfile(modelPath)
     model = WVModel.modelFromFile(modelPath);
     closeModel = onCleanup(@()model.closeNetCDFFile());
     validateTransform(model.wvt,configuration);
+    assert(model.wvt.Nz == provenance.resolved.Nz && model.wvt.Nj == provenance.resolved.Nj,"Stored vertical resolution differs from provenance.");
+    assert(abs(provenance.resolved.initialWaveMaximum-configuration.u0Wave) < 1e-12,"Stored wave amplitude differs from configuration.");
     if model.t >= options.maxT
         error("JPO2026:RunAlreadyComplete","Existing output has reached day %.6g; maxT must be later.",model.t/86400);
     end
@@ -87,6 +94,7 @@ else
     Lsd = 2*pi/kSD(1);
     Lxy = configuration.domainWavelengths*Lsd;
     Nz = WVStratification.verticalResolutionForHorizontalResolution(Lxy,Lz,options.Nxy,N2Function=N2,latitude=configuration.latitude);
+    if isfield(options,"Nz"), Nz = options.Nz; end
     wvt = WVTransformHydrostatic([Lxy Lxy Lz],[options.Nxy options.Nxy Nz],N2Function=N2,latitude=configuration.latitude);
     wvt.addForcing(WVAdaptiveDamping(wvt));
     damping = wvt.forcingWithName("adaptive damping");
@@ -180,6 +188,7 @@ end
 function validateTransform(wvt,c)
 assert(isa(wvt,"WVTransformHydrostatic"),"Expected a hydrostatic transform.");
 assert(wvt.Nx == c.Nxy && wvt.Ny == c.Nxy && wvt.Lz == c.Lz,"Unexpected grid or depth.");
+if isfield(c,"Nz"), assert(wvt.Nz == c.Nz,"Unexpected vertical grid."); end
 expectedN2 = c.N0^2*exp(2*wvt.z/c.stratificationScale);
 assert(max(abs(wvt.N2-expectedN2)) < 1e-12*max(expectedN2),"Unexpected stratification.");
 assert(all(isfinite(wvt.Ap),"all") && all(isfinite(wvt.Am),"all") && all(isfinite(wvt.A0),"all"),"Nonfinite initial or restored coefficients.");
