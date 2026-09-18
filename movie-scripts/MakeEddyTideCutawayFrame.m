@@ -11,6 +11,7 @@ function [fig, frame] = MakeEddyTideCutawayFrame(options)
 % divided by the Coriolis frequency, with a common, fixed linear color scale.
 % Horizontal coordinates are relative to the original domain center.
 % The periodic endpoint is included to close the displayed domain.
+% Soft directional lighting distinguishes the faces without box outlines.
 %
 % ```matlab
 % [fig, frame] = MakeEddyTideCutawayFrame(day=0);
@@ -112,6 +113,9 @@ daspect(ax,[1 1 1000/options.verticalExaggeration]);
 view(ax,options.viewAngles);
 camproj(ax,"orthographic");
 camzoom(ax,1.10);
+% Use the reference figure's camera-relative light direction, with a softer
+% matte material. An infinite light gives each planar face uniform shading.
+camlight(ax,20,30,"infinite");
 ax.Box = "off";
 ax.TickDir = "out";
 ax.XTick = -300:150:300;
@@ -153,6 +157,7 @@ drawnow
 frame = struct(inputFile=options.inputFile,iTime=iTime,day=t(iTime)/86400,outputFile=options.outputFile,colorLimit=options.colorLimit,verticalExaggeration=options.verticalExaggeration,xCutKm=xCut,yCutKm=yCut,cutMode=options.cutMode,geostrophicPeak=geostrophicPeak,viewAngles=options.viewAngles,cameraZoom=1.10,vorticityRange=vorticityRange,saturatedGridFraction=saturatedGridFraction,saturatedTopFraction=saturatedTopFraction);
 frame.trackingStatus = trackingStatus;
 frame.trackingSettings = trackingSettings;
+frame.lighting = struct(cameraAngles=[20 30],style="infinite",ambientStrength=0.85,diffuseStrength=0.15,specularStrength=0);
 fig.UserData = frame;
 if strlength(options.outputFile) > 0
     outputFolder = fileparts(options.outputFile);

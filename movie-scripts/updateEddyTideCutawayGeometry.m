@@ -1,5 +1,5 @@
 function geometry = updateEddyTideCutawayGeometry(ax, field, x, y, z, xCut, yCut, geometry)
-% Create or update the eight faces and outlines shared by stills and movies.
+% Create or update the eight softly lit faces shared by stills and movies.
 arguments (Input)
     ax (1,1) matlab.graphics.axis.Axes
     field (1,1) griddedInterpolant
@@ -25,7 +25,6 @@ coordinates = {x,yBack,z(end); xLeft,yFront,z(end); xRight,yCut,z; xCut,yFront,z
 isNew = isempty(fieldnames(geometry));
 if isNew
     geometry.faces = gobjects(8,1);
-    geometry.edges = gobjects(8,1);
 end
 for iFace = 1:8
     [X,Y,Z] = ndgrid(coordinates{iFace,:});
@@ -34,29 +33,9 @@ for iFace = 1:8
     Z = squeeze(Z);
     C = field(X,Y,Z);
     if isNew
-        geometry.faces(iFace) = surf(ax,X,Y,Z,C,EdgeColor="none",FaceColor="interp");
+        geometry.faces(iFace) = surf(ax,X,Y,Z,C,EdgeColor="none",FaceColor="interp",FaceLighting="gouraud",AmbientStrength=0.85,DiffuseStrength=0.15,SpecularStrength=0,BackFaceLighting="reverselit");
     else
         set(geometry.faces(iFace),XData=X,YData=Y,ZData=Z,CData=C);
-    end
-end
-
-outlineX = [x(1) xCut xCut x(end) x(end) x(1) x(1)];
-outlineY = [y(1) y(1) yCut yCut y(end) y(end) y(1)];
-for iEdge = 1:8
-    if iEdge <= 2
-        X = outlineX;
-        Y = outlineY;
-        Z = z(1 + (iEdge == 1)*(numel(z)-1))*ones(size(X));
-    else
-        iCorner = iEdge - 2;
-        X = [outlineX(iCorner) outlineX(iCorner)];
-        Y = [outlineY(iCorner) outlineY(iCorner)];
-        Z = z([1 end]);
-    end
-    if isNew
-        geometry.edges(iEdge) = plot3(ax,X,Y,Z,Color=[0.30 0.34 0.39],LineWidth=0.8);
-    else
-        set(geometry.edges(iEdge),XData=X,YData=Y,ZData=Z);
     end
 end
 end

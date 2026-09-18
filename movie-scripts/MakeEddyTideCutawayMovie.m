@@ -142,6 +142,7 @@ clear writerCleanup
 movefile(partialFile,options.outputFile);
 movie = struct(outputFile=options.outputFile,inputFile=options.inputFile,indices=indices,days=time(indices)/86400,frameRate=options.frameRate,quality=options.quality,resolution=[1920 1080],frameCount=nFrames,durationSeconds=nFrames/options.frameRate,cutMode=options.cutMode,colorLimit=options.colorLimit,verticalExaggeration=options.verticalExaggeration,viewAngles=options.viewAngles,xCutKm=xCuts,yCutKm=yCuts,vorticityRange=vorticityRange,elapsedSeconds=toc(timer));
 movie.outputStride = options.outputStride;
+movie.lighting = fig.UserData.lighting;
 save(fullfile(outputFolder,outputName + ".mat"),"movie");
 fprintf("Saved %s (%d frames, %.3f s at %g fps).\n",options.outputFile,nFrames,movie.durationSeconds,options.frameRate);
 end
