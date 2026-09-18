@@ -70,6 +70,10 @@ The manuscript uses the constant-stratification transform. A separate
 Boussinesq comparison was used to validate that this simplified reproduction
 gives the same result, but it is not required for recreating the paper.
 
+## Simulation movie
+
+See [movie-scripts](movie-scripts/README.md) for the 3D cutaway movie of vertical vorticity. After adding `movie-scripts` to the MATLAB path, run `MakeEddyTideCutawayMovie(frameRate=30)` for the full unforced simulation or `MakeEddyTideCutawayFrame(day=400)` for one still. The movie defaults to 1920 × 1080 H.264 MP4 at Quality 95, continuous anticyclonic tracking, and a fixed color range of ±0.12. All 2,401 saved outputs produce an 80.033-second movie at 30 fps.
+
 ## Clean verification
 
 To verify the install instructions from a clean MATLAB path, run a fresh MATLAB session and use the commands below. This resets the saved MATLAB path, uninstalls MPM packages, reinstalls the pinned packages from OceanKit, and recreates the figures.
