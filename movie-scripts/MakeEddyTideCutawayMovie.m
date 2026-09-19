@@ -1,41 +1,58 @@
 function movie = MakeEddyTideCutawayMovie(options)
-% Render saved simulation outputs to a 1920-by-1080 H.264 MP4 movie.
+% Render the cutaway as an H.264 movie or a numbered PNG sequence.
 %
-% Reuses one transform and figure, with the same composition as the still
-% renderer. Every selected saved output contributes one frame. Tracking and
-% the fixed color scale are independent options. The default is the entire
-% unforced simulation at 30 fps with color limits of +/-0.12.
+% Reuses one transform and figure, with the component palettes, labels,
+% lighting, typography, and opacity blend of MakeEddyTideCutawayFrame. Tracking
+% uses the complete saved history; outputStride selects frames for display.
+% Defaults to all days of the unforced run with outputStride=2 at 30 fps.
+% The wave and geostrophic vorticity sum is verified at every rendered time.
+% PNG output bypasses VideoWriter and saves lossless frames plus frames.mat.
+% Existing video files or nonempty frame folders are never overwritten.
 %
 % - Topic: Visualize the simulation
 % - Declaration: movie = MakeEddyTideCutawayMovie(options)
 % - Parameter inputFile: simulation NetCDF file; defaults to the unforced run
-% - Parameter outputFile: MP4 filename; defaults to movies/eddy-tide-unforced-30fps.mp4
-% - Parameter frameRate: playback frames per second; default 30
-% - Parameter quality: VideoWriter MPEG-4 quality from 0 to 100; default 95
+% - Parameter outputFormat: "video" (default) or "png" for a frame sequence
+% - Parameter outputFile: MP4 filename for video output; defaults to movies/eddy-tide-cutaway-12hour-30fps.mp4
+% - Parameter outputFolder: PNG destination; defaults to movie-frames/eddy-tide-sequence
+% - Parameter resolutionScale: integer pixel scale relative to 1920-by-1080; default 1
+% - Parameter frameRate: playback frames per second, recorded as metadata for PNG output; default 30
+% - Parameter quality: VideoWriter MPEG-4 quality from 0 to 100; unused for lossless PNG; default 95
 % - Parameter firstDay: first requested simulation day; default 0
 % - Parameter lastDay: last requested simulation day; default Inf selects the end
-% - Parameter outputStride: use every nth saved output within the day range; default 1
+% - Parameter outputStride: use every nth saved output within the day range; default 2
 % - Parameter cutMode: "geostrophic" tracks the anticyclone; "fixed" disables tracking
 % - Parameter coreTrack: optional saved output of TrackEddyTideAnticyclone
 % - Parameter xCutKm: fixed x cut coordinate in km; default 0
 % - Parameter yCutKm: fixed y cut coordinate in km; default 0
-% - Parameter colorLimit: symmetric limits for zeta_z/f; default 0.12
+% - Parameter colorMode: "components" (default) or "total"
+% - Parameter colorLimit: symmetric geostrophic (or total) vorticity limits in units of f; default 0.12
+% - Parameter waveColorLimit: symmetric wave zeta/f limits; default 0.08
+% - Parameter maximumGeostrophicOpacity: upper limit of colored-layer opacity; default 0.92
+% - Parameter geostrophicOpacityScale: absolute geostrophic zeta/f at 63 percent of maximum opacity; default 0.015
 % - Parameter verticalExaggeration: vertical scale relative to horizontal; default 160
 % - Parameter viewAngles: camera azimuth and elevation in degrees; default [35 25]
-% - Returns movie: output path, source indices, encoding settings, and elapsed time
+% - Returns movie: source indices, style, encoding settings, component statistics, and elapsed time
 arguments (Input)
     options.inputFile (1,1) string {mustBeFile} = defaultInputFile()
+    options.outputFormat (1,1) string {mustBeMember(options.outputFormat,["video","png"])} = "video"
     options.outputFile (1,1) string = defaultOutputFile()
+    options.outputFolder (1,1) string = defaultOutputFolder()
+    options.resolutionScale (1,1) double {mustBeFinite,mustBeInteger,mustBePositive} = 1
     options.frameRate (1,1) double {mustBeFinite,mustBePositive} = 30
     options.quality (1,1) double {mustBeFinite,mustBeBetween(options.quality,0,100)} = 95
     options.firstDay (1,1) double {mustBeFinite,mustBeNonnegative} = 0
     options.lastDay (1,1) double {mustBeNonnegative} = Inf
-    options.outputStride (1,1) double {mustBeFinite,mustBeInteger,mustBePositive} = 1
+    options.outputStride (1,1) double {mustBeFinite,mustBeInteger,mustBePositive} = 2
     options.cutMode (1,1) string {mustBeMember(options.cutMode,["geostrophic","fixed"])} = "geostrophic"
     options.coreTrack (1,1) struct = struct()
     options.xCutKm (1,1) double {mustBeFinite} = 0
     options.yCutKm (1,1) double {mustBeFinite} = 0
+    options.colorMode (1,1) string {mustBeMember(options.colorMode,["components","total"])} = "components"
     options.colorLimit (1,1) double {mustBeFinite,mustBePositive} = 0.12
+    options.waveColorLimit (1,1) double {mustBeFinite,mustBePositive} = 0.08
+    options.maximumGeostrophicOpacity (1,1) double {mustBeFinite,mustBeBetween(options.maximumGeostrophicOpacity,0,1)} = 0.92
+    options.geostrophicOpacityScale (1,1) double {mustBeFinite,mustBePositive} = 0.015
     options.verticalExaggeration (1,1) double {mustBeFinite,mustBePositive} = 160
     options.viewAngles (1,2) double {mustBeFinite} = [35 25]
 end
@@ -52,12 +69,28 @@ if numel(indices) > 2 && any(abs(diff(time(indices)) - median(diff(time(indices)
     error("EddyTide:IrregularMovieTimes","Saved outputs must be equally spaced for one output per movie frame.")
 end
 indices = indices(1:options.outputStride:end);
-[outputFolder,outputName,extension] = fileparts(options.outputFile);
-if ~strcmpi(extension,".mp4")
-    error("EddyTide:MovieExtension","The MPEG-4 output filename must end in .mp4.")
-end
-if isfile(options.outputFile)
-    error("EddyTide:MovieExists","Output already exists: %s. Choose a new outputFile.",options.outputFile)
+if options.outputFormat == "video"
+    [destinationFolder,outputName,extension] = fileparts(options.outputFile);
+    if ~strcmpi(extension,".mp4")
+        error("EddyTide:MovieExtension","The MPEG-4 output filename must end in .mp4.")
+    end
+    partialFile = string(fullfile(destinationFolder,outputName + ".partial.mp4"));
+    metadataFile = string(fullfile(destinationFolder,outputName + ".mat"));
+    if isfile(options.outputFile) || isfile(partialFile) || isfile(metadataFile)
+        error("EddyTide:MovieExists","A movie, partial movie, or sidecar already exists for %s. Choose a new outputFile.",options.outputFile)
+    end
+else
+    destinationFolder = options.outputFolder;
+    if strlength(destinationFolder) == 0 || isfile(destinationFolder)
+        error("EddyTide:InvalidFrameFolder","outputFolder must name a new or empty directory.")
+    end
+    if isfolder(destinationFolder)
+        entries = dir(destinationFolder);
+        if any(~ismember(string({entries.name}),[".",".."]))
+            error("EddyTide:FrameFolderNotEmpty","Frame folder is not empty: %s. Choose a new outputFolder.",destinationFolder)
+        end
+    end
+    metadataFile = string(fullfile(destinationFolder,"frames.mat"));
 end
 track = options.coreTrack;
 if options.cutMode == "geostrophic"
@@ -70,17 +103,16 @@ if options.cutMode == "geostrophic"
     end
 end
 timer = tic;
-frameOptions = rmfield(options,["frameRate","quality","firstDay","lastDay","outputStride"]);
+frameOptions = rmfield(options,["outputFormat","outputFolder","frameRate","quality","firstDay","lastDay","outputStride"]);
 frameOptions.outputFile = "";
 frameOptions.day = time(indices(1))/86400;
 frameOptions.coreTrack = track;
 frameOptions.visible = false;
 frameArguments = namedargs2cell(frameOptions);
-[fig,~] = MakeEddyTideCutawayFrame(frameArguments{:});
+[fig,firstFrame] = MakeEddyTideCutawayFrame(frameArguments{:});
+style = firstFrame.style;
 figureCleanup = onCleanup(@()close(fig));
-fig.PaperUnits = "inches";
-fig.PaperPosition = [0 0 12.8 7.2];
-fig.PaperSize = [12.8 7.2];
+resolution = options.resolutionScale*[1920 1080];
 geometry = getappdata(fig,"EddyTideGeometry");
 ax = findobj(fig,Tag="EddyTideAxes");
 dayLabel = findall(fig,Tag="EddyTideDay");
@@ -102,49 +134,92 @@ end
 if any(xCuts <= x(1) | xCuts >= x(end) | yCuts <= y(1) | yCuts >= y(end))
     error("EddyTide:CutOutsideDomain","All cut coordinates must be strictly inside the horizontal domain.")
 end
-if strlength(outputFolder) > 0 && ~isfolder(outputFolder)
-    mkdir(outputFolder)
+if strlength(destinationFolder) > 0 && ~isfolder(destinationFolder)
+    mkdir(destinationFolder)
 end
-partialFile = string(fullfile(outputFolder,outputName + ".partial.mp4"));
-if isfile(partialFile)
-    error("EddyTide:MovieExists","An incomplete movie already exists: %s. Choose a new outputFile or move the incomplete movie.",partialFile)
-end
-writer = VideoWriter(partialFile,"MPEG-4");
-writer.FrameRate = options.frameRate;
-writer.Quality = options.quality;
-open(writer);
-writerCleanup = onCleanup(@()close(writer));
 nFrames = numel(indices);
+frameFiles = strings(0,1);
+if options.outputFormat == "video"
+    writer = VideoWriter(partialFile,"MPEG-4");
+    writer.FrameRate = options.frameRate;
+    writer.Quality = options.quality;
+    open(writer);
+    writerCleanup = onCleanup(@()close(writer));
+else
+    frameFiles = fullfile(destinationFolder,compose("frame-%06d.png",(1:nFrames).'));
+end
 vorticityRange = nan(nFrames,2);
+if options.colorMode == "components"
+    geostrophicRange = nan(nFrames,2);
+    waveRange = nan(nFrames,2);
+    decompositionResidual = nan(nFrames,1);
+    saturatedGridFraction = nan(nFrames,2);
+end
 for iFrame = 1:nFrames
     iTime = indices(iFrame);
     if iFrame > 1
         wvt.initFromNetCDFFile(ncfile,iTime=iTime);
     end
-    q = wvt.zeta_z/wvt.f;
-    vorticityRange(iFrame,:) = [min(q(:)) max(q(:))];
-    field = griddedInterpolant({x,y,z},q([1:end 1],[1:end 1],:),"linear","none");
-    geometry = updateEddyTideCutawayGeometry(ax,field,x,y,z,xCuts(iFrame),yCuts(iFrame),geometry);
-    dayLabel.String = sprintf("Day %.2f",time(iTime)/86400);
-    cutCaption.String = cutLabel + newline + sprintf("x = %.1f km, y = %.1f km",xCuts(iFrame),yCuts(iFrame)) + newline + sprintf("Vertical exaggeration %g×",options.verticalExaggeration);
-    rgb = print(fig,"-RGBImage","-r150");
-    if ~isequal(size(rgb),[1080 1920 3])
-        error("EddyTide:MovieFrameSize","Expected a 1920-by-1080 RGB frame.")
+    qt = wvt.zeta_z/wvt.f;
+    vorticityRange(iFrame,:) = [min(qt(:)) max(qt(:))];
+    if options.colorMode == "components"
+        qg = (wvt.diffX(wvt.v_g) - wvt.diffY(wvt.u_g))/wvt.f;
+        qw = (wvt.diffX(wvt.v_w) - wvt.diffY(wvt.u_w))/wvt.f;
+        decompositionResidual(iFrame) = max(abs(qt - qg - qw),[],"all");
+        if decompositionResidual(iFrame) > 1e-10*max(1,max(abs(qt),[],"all"))
+            error("EddyTide:IncompleteComponentDecomposition","Component vorticities do not reconstruct total vorticity at day %.2f; residual %.3g.",time(iTime)/86400,decompositionResidual(iFrame))
+        end
+        geostrophicRange(iFrame,:) = [min(qg(:)) max(qg(:))];
+        waveRange(iFrame,:) = [min(qw(:)) max(qw(:))];
+        saturatedGridFraction(iFrame,:) = [nnz(abs(qg)>options.colorLimit)/numel(qg), nnz(abs(qw)>options.waveColorLimit)/numel(qw)];
+        geostrophicField = griddedInterpolant({x,y,z},qg([1:end 1],[1:end 1],:),"linear","none");
+        waveField = griddedInterpolant({x,y,z},qw([1:end 1],[1:end 1],:),"linear","none");
+        geometry = updateEddyTideCutawayGeometry(ax,geostrophicField,x,y,z,xCuts(iFrame),yCuts(iFrame),geometry);
+        applyEddyTideComponentColors(geometry,geostrophicField,waveField,style);
+    else
+        field = griddedInterpolant({x,y,z},qt([1:end 1],[1:end 1],:),"linear","none");
+        geometry = updateEddyTideCutawayGeometry(ax,field,x,y,z,xCuts(iFrame),yCuts(iFrame),geometry);
     end
-    writeVideo(writer,rgb);
+    dayLabel.String = sprintf("Day %.2f",time(iTime)/86400);
+    cutCaption.String = cutLabel + newline + sprintf("x = %.1f km, y = %.1f km",xCuts(iFrame),yCuts(iFrame));
+    [rgb,raster] = renderEddyTideFigure(fig,options.resolutionScale);
+    if options.outputFormat == "video"
+        writeVideo(writer,rgb);
+    else
+        % Finish each image before publishing its final sequence filename.
+        partialFrame = fullfile(destinationFolder,compose("frame-%06d.partial.png",iFrame));
+        imwrite(rgb,partialFrame,"png");
+        movefile(partialFrame,frameFiles(iFrame));
+    end
     if iFrame == 1 || mod(iFrame,50) == 0 || iFrame == nFrames
         elapsed = toc(timer);
         fprintf("Frame %d/%d, day %.2f; elapsed %.1f s, estimated remaining %.1f s\n",iFrame,nFrames,time(iTime)/86400,elapsed,elapsed*(nFrames/iFrame - 1));
     end
 end
-close(writer);
-clear writerCleanup
-movefile(partialFile,options.outputFile);
-movie = struct(outputFile=options.outputFile,inputFile=options.inputFile,indices=indices,days=time(indices)/86400,frameRate=options.frameRate,quality=options.quality,resolution=[1920 1080],frameCount=nFrames,durationSeconds=nFrames/options.frameRate,cutMode=options.cutMode,colorLimit=options.colorLimit,verticalExaggeration=options.verticalExaggeration,viewAngles=options.viewAngles,xCutKm=xCuts,yCutKm=yCuts,vorticityRange=vorticityRange,elapsedSeconds=toc(timer));
+if options.outputFormat == "video"
+    close(writer);
+    clear writerCleanup
+    movefile(partialFile,options.outputFile);
+    outputFile = options.outputFile;
+    destination = outputFile;
+else
+    outputFile = "";
+    destination = destinationFolder;
+end
+movie = struct(outputFormat=options.outputFormat,outputFile=outputFile,outputFolder=destinationFolder,metadataFile=metadataFile,frameFiles=frameFiles,inputFile=options.inputFile,indices=indices,days=time(indices)/86400,frameRate=options.frameRate,quality=options.quality,resolution=resolution,frameCount=nFrames,durationSeconds=nFrames/options.frameRate,cutMode=options.cutMode,colorMode=options.colorMode,colorLimit=options.colorLimit,style=style,verticalExaggeration=options.verticalExaggeration,viewAngles=options.viewAngles,xCutKm=xCuts,yCutKm=yCuts,vorticityRange=vorticityRange,elapsedSeconds=toc(timer));
+movie.resolutionScale = options.resolutionScale;
+movie.raster = raster;
 movie.outputStride = options.outputStride;
-movie.lighting = fig.UserData.lighting;
-save(fullfile(outputFolder,outputName + ".mat"),"movie");
-fprintf("Saved %s (%d frames, %.3f s at %g fps).\n",options.outputFile,nFrames,movie.durationSeconds,options.frameRate);
+movie.lighting = firstFrame.lighting;
+if options.colorMode == "components"
+    movie.geostrophicRange = geostrophicRange;
+    movie.waveRange = waveRange;
+    movie.decompositionResidual = decompositionResidual;
+    movie.saturatedGridFraction = saturatedGridFraction;
+    movie.saturatedGridFractionColumns = ["geostrophic","wave"];
+end
+save(metadataFile,"movie");
+fprintf("Saved %s (%d frames, %.3f s at %g fps).\n",destination,nFrames,movie.durationSeconds,options.frameRate);
 end
 
 function inputFile = defaultInputFile()
@@ -154,5 +229,10 @@ end
 
 function outputFile = defaultOutputFile()
 repoRoot = fileparts(fileparts(mfilename("fullpath")));
-outputFile = string(fullfile(repoRoot,"movies","eddy-tide-unforced-30fps.mp4"));
+outputFile = string(fullfile(repoRoot,"movies","eddy-tide-cutaway-12hour-30fps.mp4"));
+end
+
+function outputFolder = defaultOutputFolder()
+repoRoot = fileparts(fileparts(mfilename("fullpath")));
+outputFolder = string(fullfile(repoRoot,"movie-frames","eddy-tide-sequence"));
 end

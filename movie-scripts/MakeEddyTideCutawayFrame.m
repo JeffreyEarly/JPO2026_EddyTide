@@ -7,9 +7,11 @@ function [fig, frame] = MakeEddyTideCutawayFrame(options)
 % is spatially averaged and its minima associated by proximity between saved
 % times. A supplied coreTrack avoids repeating the history scan for each frame.
 % Set cutMode="fixed" to specify the cut coordinates manually.
-% All colored faces show the total vertical vorticity
-% divided by the Coriolis frequency, with a common, fixed linear color scale.
-% Horizontal coordinates are relative to the original domain center.
+% Wave vorticity uses grayscale; geostrophic vorticity uses a translucent
+% blue-red layer. Both are normalized by the Coriolis frequency f.
+% Set colorMode="total" for the original single-field color map.
+% Display distances increase from the front corner; tracked coordinates
+% retain their original domain-centered convention.
 % The periodic endpoint is included to close the displayed domain.
 % Soft directional lighting distinguishes the faces without box outlines.
 %
@@ -21,12 +23,17 @@ function [fig, frame] = MakeEddyTideCutawayFrame(options)
 % - Declaration: [fig, frame] = MakeEddyTideCutawayFrame(options)
 % - Parameter inputFile: simulation NetCDF file; defaults to the unforced run
 % - Parameter outputFile: PNG filename; an empty string disables export
+% - Parameter resolutionScale: integer pixel scale relative to 1920-by-1080; default 1
 % - Parameter day: requested simulation day; selects the nearest saved output
 % - Parameter cutMode: "geostrophic" follows the continuous anticyclonic track (default); "fixed" uses manual cut coordinates
 % - Parameter coreTrack: optional output of TrackEddyTideAnticyclone for the same input file; default computes the history through this frame
 % - Parameter xCutKm: x coordinate of the vertical cut for cutMode="fixed", in km; default 0
 % - Parameter yCutKm: y coordinate of the vertical cut for cutMode="fixed", in km; default 0
-% - Parameter colorLimit: symmetric limits for vorticity divided by f; default 0.12
+% - Parameter colorMode: "components" (default) blends wave and geostrophic maps; "total" shows total vorticity
+% - Parameter colorLimit: symmetric geostrophic (or total) vorticity limits in units of f; default 0.12
+% - Parameter waveColorLimit: symmetric wave vorticity limits in units of f; default 0.08
+% - Parameter maximumGeostrophicOpacity: maximum colored-layer opacity; default 0.92
+% - Parameter geostrophicOpacityScale: geostrophic vorticity magnitude at 63 percent opacity; default 0.015
 % - Parameter verticalExaggeration: vertical scale relative to horizontal; default 160
 % - Parameter viewAngles: camera azimuth and elevation in degrees; default [35 25]
 % - Parameter visible: whether to display the figure window; default true
@@ -35,11 +42,16 @@ function [fig, frame] = MakeEddyTideCutawayFrame(options)
 arguments (Input)
     options.inputFile (1,1) string {mustBeFile} = defaultInputFile()
     options.outputFile (1,1) string = defaultOutputFile()
+    options.resolutionScale (1,1) double {mustBeFinite,mustBeInteger,mustBePositive} = 1
     options.day (1,1) double {mustBeFinite, mustBeNonnegative} = 0
     options.cutMode (1,1) string {mustBeMember(options.cutMode,["geostrophic","fixed"])} = "geostrophic"
     options.coreTrack (1,1) struct = struct()
     options.xCutKm (1,1) double {mustBeFinite} = 0
     options.yCutKm (1,1) double {mustBeFinite} = 0
+    options.colorMode (1,1) string {mustBeMember(options.colorMode,["components","total"])} = "components"
+    options.waveColorLimit (1,1) double {mustBeFinite,mustBePositive} = 0.08
+    options.maximumGeostrophicOpacity (1,1) double {mustBeFinite,mustBeBetween(options.maximumGeostrophicOpacity,0,1)} = 0.92
+    options.geostrophicOpacityScale (1,1) double {mustBeFinite,mustBePositive} = 0.015
     options.colorLimit (1,1) double {mustBeFinite, mustBePositive} = 0.12
     options.verticalExaggeration (1,1) double {mustBeFinite, mustBePositive} = 160
     options.viewAngles (1,2) double {mustBeFinite} = [35 25]
@@ -67,6 +79,14 @@ fileCleanup = onCleanup(@()ncfile.close());
 
 % WVTransform computes zeta_z = dv/dx - du/dy from the saved modal state.
 q = wvt.zeta_z/wvt.f;
+if options.colorMode == "components"
+    qg = (wvt.diffX(wvt.v_g) - wvt.diffY(wvt.u_g))/wvt.f;
+    qw = (wvt.diffX(wvt.v_w) - wvt.diffY(wvt.u_w))/wvt.f;
+    decompositionResidual = max(abs(q - qg - qw),[],"all");
+    if decompositionResidual > 1e-10*max(1,max(abs(q),[],"all"))
+        error("EddyTide:IncompleteComponentDecomposition","Wave and geostrophic vorticity do not reconstruct total vorticity; maximum residual is %.3g.",decompositionResidual)
+    end
+end
 vorticityRange = [min(q(:)) max(q(:))];
 saturatedGridFraction = nnz(abs(q) > options.colorLimit)/numel(q);
 x = [wvt.x; wvt.Lx]/1000 - wvt.Lx/2000;
@@ -104,7 +124,16 @@ setappdata(fig,"EddyTideGeometry",geometry);
 ax.Tag = "EddyTideAxes";
 edgeColor = [0.30 0.34 0.39];
 
-colormap(ax,vorticityColormap());
+geostrophicMap = vorticityColormap();
+waveGray = interp1([-1 0 1],[0.48 0.90 1],linspace(-1,1,257));
+waveMap = repmat(waveGray(:),1,3);
+style = struct(colorMode=options.colorMode,geostrophicColormap=geostrophicMap,waveColormap=waveMap,geostrophicColorLimit=options.colorLimit,waveColorLimit=options.waveColorLimit,maximumGeostrophicOpacity=options.maximumGeostrophicOpacity,geostrophicOpacityScale=options.geostrophicOpacityScale);
+colormap(ax,geostrophicMap);
+if options.colorMode == "components"
+    geostrophicField = griddedInterpolant({x,y,z},qg([1:end 1],[1:end 1],:),"linear","none");
+    waveField = griddedInterpolant({x,y,z},qw([1:end 1],[1:end 1],:),"linear","none");
+    applyEddyTideComponentColors(geometry,geostrophicField,waveField,style);
+end
 clim(ax,options.colorLimit*[-1 1]);
 xlim(ax,x([1 end]));
 ylim(ax,y([1 end]));
@@ -134,6 +163,23 @@ cb.Label.String = "Vertical vorticity  \zeta_z / f";
 cb.Label.Interpreter = "tex";
 cb.Label.FontSize = 14;
 cb.Ticks = options.colorLimit*[-1 -0.5 0 0.5 1];
+if options.colorMode == "components"
+    cb.Position = [0.905 0.485 0.015 0.245];
+    cb.Ticks = options.colorLimit*[-1 0 1];
+    cb.Label.String = "geostrophic vorticity  \zeta_z (f)";
+    cb.Label.FontSize = 12;
+    waveAxes = axes(fig,Position=[0.905 0.155 0.015 0.245],Visible="off",HandleVisibility="off",Tag="EddyTideWaveLegendAxes");
+    colormap(waveAxes,waveMap);
+    clim(waveAxes,options.waveColorLimit*[-1 1]);
+    waveBar = colorbar(waveAxes,Position=[0.905 0.155 0.015 0.245],FontSize=12,Color=edgeColor);
+    waveBar.Ticks = options.waveColorLimit*[-1 0 1];
+    waveBar.Label.String = "wave vorticity  \zeta_z (f)";
+    waveBar.Label.Interpreter = "tex";
+    waveBar.Label.FontSize = 12;
+else
+    cb.Label.String = "vertical vorticity  \zeta_z (f)";
+    cb.Label.FontSize = 12;
+end
 annotation(fig,"textbox",[0.025 0.935 0.95 0.05],String="Internal tides catalyze geostrophic eddy instabilities",FontName="Helvetica",FontSize=24,FontWeight="bold",EdgeColor="none",Interpreter="none");
 [~,sourceName] = fileparts(options.inputFile);
 if contains(sourceName,"-unforced-")
@@ -150,7 +196,7 @@ if options.cutMode == "geostrophic"
 else
     cutLabel = "Fixed cut";
 end
-cutCaption = cutLabel + newline + sprintf("x = %.1f km, y = %.1f km",xCut,yCut) + newline + sprintf("Vertical exaggeration %g×",options.verticalExaggeration);
+cutCaption = cutLabel + newline + sprintf("x = %.1f km, y = %.1f km",xCut,yCut);
 annotation(fig,"textbox",[0.765 0.765 0.21 0.105],Tag="EddyTideCutCaption",String=cutCaption,FontName="Helvetica",FontSize=11,Color=edgeColor,HorizontalAlignment="right",EdgeColor="none",Interpreter="none");
 drawnow
 
@@ -158,19 +204,43 @@ frame = struct(inputFile=options.inputFile,iTime=iTime,day=t(iTime)/86400,output
 frame.trackingStatus = trackingStatus;
 frame.trackingSettings = trackingSettings;
 frame.lighting = struct(cameraAngles=[20 30],style="infinite",ambientStrength=0.85,diffuseStrength=0.15,specularStrength=0);
-fig.UserData = frame;
+frame.colorMode = options.colorMode;
+frame.resolutionScale = options.resolutionScale;
+frame.resolution = options.resolutionScale*[1920 1080];
+frame.layout = layoutEddyTideCutawayFigure(fig,frame);
+style.layout = frame.layout;
+style.lighting = frame.lighting;
+frame.style = style;
+if options.colorMode == "components"
+    frame.geostrophicColorLimit = options.colorLimit;
+    frame.waveColorLimit = options.waveColorLimit;
+    frame.maximumGeostrophicOpacity = options.maximumGeostrophicOpacity;
+    frame.geostrophicOpacityScale = options.geostrophicOpacityScale;
+    frame.geostrophicColormap = geostrophicMap;
+    frame.waveColormap = waveMap;
+    frame.decompositionResidual = decompositionResidual;
+    frame.geostrophicRange = [min(qg(:)) max(qg(:))];
+    frame.waveRange = [min(qw(:)) max(qw(:))];
+    frame.geostrophicSaturatedGridFraction = nnz(abs(qg)>options.colorLimit)/numel(qg);
+    frame.waveSaturatedGridFraction = nnz(abs(qw)>options.waveColorLimit)/numel(qw);
+end
 if strlength(options.outputFile) > 0
     outputFolder = fileparts(options.outputFile);
     if strlength(outputFolder) > 0 && ~isfolder(outputFolder)
         mkdir(outputFolder)
     end
-    % Keep the entire canvas and an exact 1920-by-1080 movie-frame size.
-    fig.PaperUnits = "inches";
-    fig.PaperPosition = [0 0 12.8 7.2];
-    fig.PaperSize = [12.8 7.2];
-    print(fig,options.outputFile,"-dpng","-r150");
+    [rgb,frame.raster] = renderEddyTideFigure(fig,options.resolutionScale);
+    % Retain print's filename and physical-resolution behavior for stills.
+    outputFile = options.outputFile;
+    [~,~,extension] = fileparts(outputFile);
+    if strlength(extension) == 0
+        outputFile = outputFile + ".png";
+    end
+    pixelsPerMeter = round(size(rgb,2)/(fig.PaperPosition(3)*0.0254));
+    imwrite(rgb,outputFile,"png",ResolutionUnit="meter",XResolution=pixelsPerMeter,YResolution=pixelsPerMeter);
     fprintf("Saved day %.3f (output %d) to %s\n",frame.day,frame.iTime,frame.outputFile);
 end
+fig.UserData = frame;
 end
 
 function cmap = vorticityColormap()
