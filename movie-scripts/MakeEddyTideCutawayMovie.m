@@ -5,7 +5,8 @@ function movie = MakeEddyTideCutawayMovie(options)
 % lighting, typography, and opacity blend of MakeEddyTideCutawayFrame. Tracking
 % uses the complete saved history; outputStride selects frames for display.
 % Defaults to all days of the unforced run with outputStride=2 at 30 fps.
-% The wave and geostrophic vorticity sum is verified at every rendered time.
+% Component mode verifies the wave and geostrophic vorticity sum at each time.
+% The "geostrophic-pv" mode checks qgpv = zeta_z - f*diffZG(eta) instead.
 % PNG output bypasses VideoWriter and saves lossless frames plus frames.mat.
 % Existing video files or nonempty frame folders are never overwritten.
 %
@@ -25,9 +26,11 @@ function movie = MakeEddyTideCutawayMovie(options)
 % - Parameter coreTrack: optional saved output of TrackEddyTideAnticyclone
 % - Parameter xCutKm: fixed x cut coordinate in km; default 0
 % - Parameter yCutKm: fixed y cut coordinate in km; default 0
-% - Parameter colorMode: "components" (default) or "total"
+% - Parameter colorMode: "components" (default), "geostrophic-pv", or "total"
 % - Parameter colorLimit: symmetric geostrophic (or total) vorticity limits in units of f; default 0.12
 % - Parameter waveColorLimit: symmetric wave zeta/f limits; default 0.08
+% - Parameter pvColorLimit: symmetric QGPV limits in units of f for "geostrophic-pv"; default 0.6
+% - Parameter pvOpacityScale: absolute QGPV/f at 63 percent of maximum opacity; default 0.075
 % - Parameter maximumGeostrophicOpacity: upper limit of colored-layer opacity; default 0.92
 % - Parameter geostrophicOpacityScale: absolute geostrophic zeta/f at 63 percent of maximum opacity; default 0.015
 % - Parameter verticalExaggeration: vertical scale relative to horizontal; default 160
@@ -48,9 +51,11 @@ arguments (Input)
     options.coreTrack (1,1) struct = struct()
     options.xCutKm (1,1) double {mustBeFinite} = 0
     options.yCutKm (1,1) double {mustBeFinite} = 0
-    options.colorMode (1,1) string {mustBeMember(options.colorMode,["components","total"])} = "components"
+    options.colorMode (1,1) string {mustBeMember(options.colorMode,["components","geostrophic-pv","total"])} = "components"
     options.colorLimit (1,1) double {mustBeFinite,mustBePositive} = 0.12
     options.waveColorLimit (1,1) double {mustBeFinite,mustBePositive} = 0.08
+    options.pvColorLimit (1,1) double {mustBeFinite,mustBePositive} = 0.6
+    options.pvOpacityScale (1,1) double {mustBeFinite,mustBePositive} = 0.075
     options.maximumGeostrophicOpacity (1,1) double {mustBeFinite,mustBeBetween(options.maximumGeostrophicOpacity,0,1)} = 0.92
     options.geostrophicOpacityScale (1,1) double {mustBeFinite,mustBePositive} = 0.015
     options.verticalExaggeration (1,1) double {mustBeFinite,mustBePositive} = 160
@@ -149,10 +154,10 @@ else
     frameFiles = fullfile(destinationFolder,compose("frame-%06d.png",(1:nFrames).'));
 end
 vorticityRange = nan(nFrames,2);
-if options.colorMode == "components"
+if options.colorMode ~= "total"
     geostrophicRange = nan(nFrames,2);
     waveRange = nan(nFrames,2);
-    decompositionResidual = nan(nFrames,1);
+    identityResidual = nan(nFrames,1);
     saturatedGridFraction = nan(nFrames,2);
 end
 for iFrame = 1:nFrames
@@ -162,16 +167,22 @@ for iFrame = 1:nFrames
     end
     qt = wvt.zeta_z/wvt.f;
     vorticityRange(iFrame,:) = [min(qt(:)) max(qt(:))];
-    if options.colorMode == "components"
-        qg = (wvt.diffX(wvt.v_g) - wvt.diffY(wvt.u_g))/wvt.f;
+    if options.colorMode ~= "total"
+        if options.colorMode == "geostrophic-pv"
+            [qg,identityResidual(iFrame)] = eddyTideGeostrophicPV(wvt);
+        else
+            qg = (wvt.diffX(wvt.v_g) - wvt.diffY(wvt.u_g))/wvt.f;
+        end
         qw = (wvt.diffX(wvt.v_w) - wvt.diffY(wvt.u_w))/wvt.f;
-        decompositionResidual(iFrame) = max(abs(qt - qg - qw),[],"all");
-        if decompositionResidual(iFrame) > 1e-10*max(1,max(abs(qt),[],"all"))
-            error("EddyTide:IncompleteComponentDecomposition","Component vorticities do not reconstruct total vorticity at day %.2f; residual %.3g.",time(iTime)/86400,decompositionResidual(iFrame))
+        if options.colorMode == "components"
+            identityResidual(iFrame) = max(abs(qt - qg - qw),[],"all");
+            if identityResidual(iFrame) > 1e-10*max(1,max(abs(qt),[],"all"))
+                error("EddyTide:IncompleteComponentDecomposition","Component vorticities do not reconstruct total vorticity at day %.2f; residual %.3g.",time(iTime)/86400,identityResidual(iFrame))
+            end
         end
         geostrophicRange(iFrame,:) = [min(qg(:)) max(qg(:))];
         waveRange(iFrame,:) = [min(qw(:)) max(qw(:))];
-        saturatedGridFraction(iFrame,:) = [nnz(abs(qg)>options.colorLimit)/numel(qg), nnz(abs(qw)>options.waveColorLimit)/numel(qw)];
+        saturatedGridFraction(iFrame,:) = [nnz(abs(qg)>style.geostrophicColorLimit)/numel(qg), nnz(abs(qw)>options.waveColorLimit)/numel(qw)];
         geostrophicField = griddedInterpolant({x,y,z},qg([1:end 1],[1:end 1],:),"linear","none");
         waveField = griddedInterpolant({x,y,z},qw([1:end 1],[1:end 1],:),"linear","none");
         geometry = updateEddyTideCutawayGeometry(ax,geostrophicField,x,y,z,xCuts(iFrame),yCuts(iFrame),geometry);
@@ -211,12 +222,21 @@ movie.resolutionScale = options.resolutionScale;
 movie.raster = raster;
 movie.outputStride = options.outputStride;
 movie.lighting = firstFrame.lighting;
-if options.colorMode == "components"
-    movie.geostrophicRange = geostrophicRange;
+if options.colorMode ~= "total"
     movie.waveRange = waveRange;
-    movie.decompositionResidual = decompositionResidual;
     movie.saturatedGridFraction = saturatedGridFraction;
-    movie.saturatedGridFractionColumns = ["geostrophic","wave"];
+    if options.colorMode == "geostrophic-pv"
+        movie.pvColorLimit = options.pvColorLimit;
+        movie.pvOpacityScale = options.pvOpacityScale;
+        movie.pvRange = geostrophicRange;
+        movie.pvRangePerSecond = sort(geostrophicRange*wvt.f,2);
+        movie.pvIdentityResidual = identityResidual;
+        movie.saturatedGridFractionColumns = ["geostrophicPV","waveVorticity"];
+    else
+        movie.geostrophicRange = geostrophicRange;
+        movie.decompositionResidual = identityResidual;
+        movie.saturatedGridFractionColumns = ["geostrophic","wave"];
+    end
 end
 save(metadataFile,"movie");
 fprintf("Saved %s (%d frames, %.3f s at %g fps).\n",destination,nFrames,movie.durationSeconds,options.frameRate);

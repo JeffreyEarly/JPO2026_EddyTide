@@ -14,7 +14,11 @@ for iFace = 1:numel(geometry.faces)
     waveRGB = mapColors(waveValues,style.waveColormap,style.waveColorLimit);
     alpha = style.maximumGeostrophicOpacity*(-expm1(-(abs(geostrophicValues)/style.geostrophicOpacityScale).^2));
     face.CData = alpha.*geostrophicRGB + (1-alpha).*waveRGB;
-    face.UserData = struct(geostrophicVorticity=geostrophicValues,waveVorticity=waveValues,geostrophicOpacity=alpha);
+    if style.colorMode == "geostrophic-pv"
+        face.UserData = struct(geostrophicPV=geostrophicValues,waveVorticity=waveValues,geostrophicOpacity=alpha);
+    else
+        face.UserData = struct(geostrophicVorticity=geostrophicValues,waveVorticity=waveValues,geostrophicOpacity=alpha);
+    end
 end
 end
 
